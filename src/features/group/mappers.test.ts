@@ -1,4 +1,4 @@
-import { chatFromSnapshot, currentDatos, failDatoSave, startDatoSave } from '@/domain/chat';
+import { chatFromSnapshot, currentDatos, failDatoSave, queueOutgoing, startDatoSave, type ChatState } from '@/domain/chat';
 import type { ChatSnapshot, Dato, Message } from '@/server/mock-server';
 
 import { toGroupScreen } from './mappers';
@@ -53,8 +53,12 @@ const vaccination: Dato = {
   opens: null,
 };
 
-/** Arma la pantalla a partir de una lista de mensajes, como lo hace la app. */
-function screenFor(messages: Message[]) {
+/**
+ * Arma la pantalla a partir de una lista de mensajes, como lo hace la app.
+ *
+ * @param prepare Un cambio para hacerle al estado antes de armar la pantalla.
+ */
+function screenFor(messages: Message[], prepare: (chat: ChatState) => ChatState = (chat) => chat) {
   const snapshot: ChatSnapshot = {
     id: 'g_01',
     name: 'La Aurora · Hacienda',
@@ -69,7 +73,7 @@ function screenFor(messages: Message[]) {
     unsent: [],
     cursor: 0,
   };
-  const chat = chatFromSnapshot({ ...snapshot, members: snapshot.members.map((m) => (m.id === 'u_01' ? { ...m, watermark: 999 } : m)) });
+  const chat = prepare(chatFromSnapshot({ ...snapshot, members: snapshot.members.map((m) => (m.id === 'u_01' ? { ...m, watermark: 999 } : m)) }));
   return toGroupScreen(chat, currentDatos(chat.messages), NOW);
 }
 
@@ -203,5 +207,30 @@ describe('toGroupScreen', () => {
     const agents = rows.filter((row) => row.kind === 'agent');
 
     expect(agents.map((row) => row.showLabel)).toEqual([true, false]);
+  });
+
+  it('se puede mencionar a todos menos a mí, con el agente primero', () => {
+    const { mentionOptions } = screenFor([]);
+
+    expect(mentionOptions).toEqual([
+      { key: 'agent', name: 'agente', detail: 'anota datos y responde consultas', isAgent: true },
+      { key: 'u_03', name: 'Ramón', detail: 'Ramón Benítez · peón', isAgent: false },
+    ]);
+  });
+
+  it('a un mensaje se le responde con su número de orden y una cita', () => {
+    const { rows } = screenFor([message(7, { text: 'llovieron 23' }), message(8, { sender_id: 'agent', type: 'dato', dato: rain })]);
+
+    expect(rowOf(rows, 'person')?.reply).toEqual({ seq: 7, quote: { author: 'Ramón', snippet: 'llovieron 23' } });
+    expect(rowOf(rows, 'agent')?.reply).toEqual({ seq: 8, quote: { author: 'Agente', snippet: 'Lluvia' } });
+  });
+
+  it('lo mío que todavía no salió cita al que responde, pero no se le puede responder', () => {
+    const { rows } = screenFor([message(7, { text: 'llovieron 23' })], (chat) =>
+      queueOutgoing(chat, { localId: 'l_1', text: 'cuánto en el casco?', replyTo: 7, createdAt: NOW }),
+    );
+    const pending = rows.filter((row) => row.kind === 'person')[1];
+
+    expect(pending).toMatchObject({ delivery: 'sending', quote: { author: 'Ramón', snippet: 'llovieron 23' }, reply: null });
   });
 });

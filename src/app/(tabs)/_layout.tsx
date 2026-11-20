@@ -12,6 +12,8 @@ export default function TabsLayout() {
       screenOptions={{
         // Cada vista dibuja su propia barra superior.
         headerShown: false,
+        // Con el teclado abierto las pestañas se esconden: el campo de texto queda pegado al teclado.
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: color.teal,
         tabBarInactiveTintColor: color.secundario,
         tabBarStyle: { backgroundColor: color.superficie, borderTopColor: color.divisor },

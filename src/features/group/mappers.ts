@@ -10,7 +10,19 @@ import type { ChatState, DatoSave, Outgoing } from '@/domain/chat';
 import { formatDate, formatDuration, formatNumber, formatQuantity, formatTime, formatValue } from '@/domain/format';
 import type { Card, Dato, Field, Member, Message, Table } from '@/server/mock-server';
 
-import type { ActivityModel, AgentContent, DatoModel, GroupRow, GroupScreenModel, MetricModel, PersonBody, QuoteModel, TableModel } from './model';
+import type {
+  ActivityModel,
+  AgentContent,
+  DatoModel,
+  GroupRow,
+  GroupScreenModel,
+  MentionOption,
+  MetricModel,
+  PersonBody,
+  QuoteModel,
+  ReplyTarget,
+  TableModel,
+} from './model';
 import { roleLabel } from './roles';
 import { agentActivity, statusLine, typingActivity } from './statusLine';
 import { buildTimeline, messageSnippet, type TimelineItem } from './timeline';
@@ -54,7 +66,20 @@ export function toGroupScreen(chat: ChatState, datos: Record<string, Dato>, now:
     initialIndex: unreadIndex >= 0 ? unreadIndex : rows.length - 1,
     activity: toActivity(chat),
     notice: noticeCode ? (NOTICE[noticeCode] ?? null) : null,
+    mentionOptions: toMentionOptions(chat),
   };
+}
+
+// A quién puedo mencionar: todos menos yo. El agente va primero, porque es a
+// quien más se le pregunta.
+function toMentionOptions(chat: ChatState): MentionOption[] {
+  const others = chat.members.filter((member) => member.id !== chat.me);
+  return [...others.filter((member) => member.is_agent), ...others.filter((member) => !member.is_agent)].map((member) => ({
+    key: member.id,
+    name: member.short_name,
+    detail: member.is_agent ? 'anota datos y responde consultas' : `${member.name} · ${roleLabel(member.role)}`,
+    isAgent: member.is_agent,
+  }));
 }
 
 // Lo que se avisa abajo cuando completar un dato no hizo falta o no se pudo.
@@ -87,7 +112,14 @@ function toRow(item: TimelineItem, previous: TimelineItem | undefined, context: 
 
   if (sender.is_agent) {
     const previousIsAgent = previous?.kind === 'message' && previous.message.sender_id === message.sender_id;
-    return { kind: 'agent', key: item.key, time: formatTime(message.created_at), showLabel: !previousIsAgent, content: toAgentContent(message, context) };
+    return {
+      kind: 'agent',
+      key: item.key,
+      time: formatTime(message.created_at),
+      showLabel: !previousIsAgent,
+      content: toAgentContent(message, context),
+      reply: toReplyTarget(message, context),
+    };
   }
 
   const isMine = message.sender_id === context.chat.me;
@@ -102,6 +134,7 @@ function toRow(item: TimelineItem, previous: TimelineItem | undefined, context: 
     body: toPersonBody(message),
     delivery: isMine ? 'sent' : null,
     localId: null,
+    reply: toReplyTarget(message, context),
   };
 }
 
@@ -119,6 +152,8 @@ function toOutgoingRow(outgoing: Outgoing, context: Context): GroupRow {
     body: { kind: 'text', text: outgoing.text },
     delivery: outgoing.status,
     localId: outgoing.localId,
+    // Todavía no tiene número de orden: no se le puede responder.
+    reply: null,
   };
 }
 
@@ -142,6 +177,11 @@ function toQuote(message: Message, context: Context): QuoteModel | null {
   if (message.reply_to === null) return null;
   const quoted = context.messagesBySeq.get(message.reply_to);
   return quoted ? toQuoteOf(quoted, context) : null;
+}
+
+/** Lo que hace falta para responderle a este mensaje. */
+function toReplyTarget(message: Message, context: Context): ReplyTarget {
+  return { seq: message.seq, quote: toQuoteOf(message, context) };
 }
 
 function toQuoteOf(quoted: Message, context: Context): QuoteModel {

@@ -50,6 +50,8 @@ Otros comandos:
 - Abre parado en lo primero sin leer, con la mención a mí resaltada.
 - Los mensajes llegan en vivo y la lista no se mueve mientras leo más arriba. Un aviso cuenta los nuevos.
 - Se puede escribir y enviar. Cada mensaje mío muestra si se está enviando, salió o falló, y lo que falló se reintenta.
+- Al escribir `@` aparece a quién mencionar, y la lista se achica mientras se escribe el nombre. Tocar a alguien completa la mención.
+- Mantener apretado un mensaje lo responde: la cita queda arriba del campo de texto hasta enviar o cancelar.
 - El mensaje que había quedado sin enviar aparece al final, listo para reintentar. Lo que no sale se guarda en el teléfono.
 - Arriba se ve quién está escribiendo y si el agente piensa o tarda.
 - Lo que dice una persona va en un globo. Lo que anota el agente va en una tarjeta a todo el ancho, sin globo.
@@ -96,7 +98,8 @@ Tres reglas sostienen el resto:
 - **Lo que mando lleva un identificador propio.** Aparece al instante, y la confirmación, que llega por dos caminos, se une por ese identificador. Reintentar usa el mismo, así que no duplica.
 - **Completar un dato pide elegir y después confirmar.** Es un toque más que guardar al tocar la sugerencia, pero evita guardar por error: en el campo se toca con el pulgar y a veces con guantes.
 - **Si otro completó el dato antes, no se reintenta.** Se avisa y la tarjeta muestra cómo quedó.
-- **La lista no baja sola.** Solo sigue a lo nuevo si ya estaba al final.
+- **La lista no baja sola.** Solo sigue a lo nuevo si ya estaba al final. Lo mismo cuando sale el teclado: si se leía más arriba, queda donde estaba.
+- **Responder es mantener apretado el mensaje.** Deslizarlo, como en WhatsApp, queda para cuando se sumen las animaciones.
 - **El número de "sin leer" no cambia mientras leo.** Lo que llega con el grupo abierto se cuenta aparte, como "nuevos".
 - **Qué lluvia cuenta.** Se suma al mes una lluvia guardada, del mismo pluviómetro y con fecha posterior a `until`. Una lluvia incompleta no cuenta hasta que alguien la complete.
 - **La lista de animales muestra los activos,** para que coincida con el stock. Si una tarjeta lleva a un animal en particular, se muestra aunque ya no esté.
@@ -135,7 +138,6 @@ No hay librería de gráficos ni kit de componentes: las barras de la lluvia y d
 
 ## Qué quedó afuera
 
-- **Responder a un mensaje y elegir a quién mencionar de una lista.** Se puede mencionar escribiendo `@` y el nombre.
 - **El micrófono.** El botón está, pero no hace nada.
 - **Quedarse sin señal.** Un envío que falla se puede reintentar, pero no hay un aviso de "sin conexión" ni una forma de simular el corte desde la app.
 - **Un dato eliminado.** Se muestra como "Eliminado", pero el servidor no trae ningún ejemplo y no se pudo probar.
@@ -143,5 +145,5 @@ No hay librería de gráficos ni kit de componentes: las barras de la lluvia y d
 
 ## Cómo se probó
 
-- 64 tests sobre las funciones puras del dominio y de los mappers: el orden, los repetidos, el envío, los datos, la lluvia y los formatos.
-- A mano en Expo Go, en un emulador con Android 16.
+- 78 tests sobre las funciones puras del dominio y de los mappers: el orden, los repetidos, el envío, los datos, la lluvia, las menciones y los formatos.
+- A mano en Expo Go, en emuladores con Android 16 y con Android 11.

@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/ui/AppText';
 import { Card } from '@/ui/Card';
@@ -15,12 +15,14 @@ type Props = {
   /** Abre en Campo lo que indica la tarjeta. */
   onOpen: (target: OpenTarget) => void;
   onComplete: (dato: DatoModel, values: Record<string, string>) => void;
+  /** Empieza a responderle a este mensaje. */
+  onReply: () => void;
 };
 
 // Lo que manda el agente. No es una persona y se tiene que notar de un
 // vistazo: no lleva globo ni nombre de persona, ocupa todo el ancho y va
 // siempre en una tarjeta.
-export function AgentMessage({ row, onOpen, onComplete }: Props) {
+export function AgentMessage({ row, onOpen, onComplete, onReply }: Props) {
   return (
     <View style={{ gap: space[4] }}>
       {row.showLabel ? (
@@ -34,12 +36,15 @@ export function AgentMessage({ row, onOpen, onComplete }: Props) {
           </AppText>
         </View>
       ) : null}
-      <Content content={row.content} onOpen={onOpen} onComplete={onComplete} />
+      {/* Mantener apretada la tarjeta la responde. */}
+      <Pressable onLongPress={onReply}>
+        <Content content={row.content} onOpen={onOpen} onComplete={onComplete} onReply={onReply} />
+      </Pressable>
     </View>
   );
 }
 
-function Content({ content, onOpen, onComplete }: { content: AgentContent } & Pick<Props, 'onOpen' | 'onComplete'>) {
+function Content({ content, onOpen, onComplete, onReply }: { content: AgentContent } & Pick<Props, 'onOpen' | 'onComplete' | 'onReply'>) {
   if (content.kind === 'dato') {
     const { dato } = content;
     const { opens } = dato;
@@ -54,7 +59,8 @@ function Content({ content, onOpen, onComplete }: { content: AgentContent } & Pi
 
   if (content.kind === 'metric') {
     const { opens } = content.metric;
-    return <MetricCard metric={content.metric} onOpen={opens ? () => onOpen(opens) : undefined} />;
+    // Esta tarjeta se toca entera, así que el toque largo se lo lleva ella.
+    return <MetricCard metric={content.metric} onOpen={opens ? () => onOpen(opens) : undefined} onLongPress={onReply} />;
   }
 
   if (content.kind === 'table') return <TableCard table={content.table} />;
