@@ -1,10 +1,12 @@
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { memo, useCallback, type RefObject } from 'react';
-import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { memo, useCallback, useEffect, useState, type RefObject } from 'react';
+import { View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
-import { space } from '@/ui/theme';
+import { TopFade } from '@/ui/animations/TopFade';
+import { color, space } from '@/ui/theme';
 
 import { ActivityFooter } from './ActivityFooter';
+import { rememberDrawn } from './arrivals';
 import type { DatoModel, OpenTarget, ReplyTarget } from './model';
 import { OlderMessages } from './OlderMessages';
 import { itemType, type TimelineItem } from './timeline';
@@ -33,6 +35,11 @@ type Props = {
 
 const keyOf = (item: TimelineItem) => item.key;
 
+/** A partir de cuántos puntos de desplazamiento se considera que hay algo más arriba. */
+const TOP_FADE_AFTER = 8;
+/** El fondo de la pantalla, transparente: donde termina el degradé de arriba. */
+const CLEAR_BACKGROUND = 'rgba(238, 242, 246, 0)';
+
 // La lista del grupo. Abre parada en lo primero sin leer y no se mueve sola
 // mientras se lee más arriba.
 //
@@ -52,6 +59,24 @@ export const MessageList = memo(function MessageList({
   onComplete,
   onReply,
 }: Props) {
+  // Lo que ya se dibujó no es "recién llegado": no se anima. Lo de la
+  // primera vez se anota antes de que se dibuje ningún renglón, así al abrir
+  // no entra nada animado; después, tras cada dibujo.
+  useState(() => rememberDrawn(items));
+  useEffect(() => {
+    rememberDrawn(items);
+  }, [items]);
+
+  // Si hay contenido más arriba de lo que se ve, para mostrar el degradé.
+  const [hasContentAbove, setHasContentAbove] = useState(initialIndex > 0);
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      setHasContentAbove(event.nativeEvent.contentOffset.y > TOP_FADE_AFTER);
+      onScroll(event);
+    },
+    [onScroll],
+  );
+
   /** Si la lista ya estaba al final, la deja al final. Si se leía más arriba, no la mueve. */
   function stayAtEnd(animated: boolean) {
     if (atBottom || Date.now() < followUntil.current) listRef.current?.scrollToEnd({ animated });
@@ -65,32 +90,36 @@ export const MessageList = memo(function MessageList({
   );
 
   return (
-    <FlashList
-      ref={listRef}
-      data={items}
-      // Recién cuando la lista terminó de armarse se empieza a mirar si está al final.
-      onLoad={() => onListReady(initialIndex === items.length - 1)}
-      keyExtractor={keyOf}
-      getItemType={itemType}
-      renderItem={renderItem}
-      initialScrollIndex={initialIndex}
-      // La lista nunca baja por su cuenta: mantiene a la vista lo que se
-      // estaba leyendo aunque arriba o abajo cambie algo.
-      maintainVisibleContentPosition={{ autoscrollToBottomThreshold: 0 }}
-      // Solo si ya estaba al final sigue a lo que llega...
-      onContentSizeChange={() => stayAtEnd(true)}
-      // ...y lo mismo cuando la lista se achica: sale el teclado o aparece la cita.
-      onLayout={() => stayAtEnd(false)}
-      onScroll={onScroll}
-      scrollEventThrottle={64}
-      // Al llegar arriba se trae la página anterior. Lo que se estaba leyendo
-      // queda en su lugar: los renglones nuevos entran por encima.
-      onStartReached={onLoadOlder}
-      onStartReachedThreshold={0.5}
-      ListHeaderComponent={OlderMessages}
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={{ paddingTop: space[16] }}
-      ListFooterComponent={ActivityFooter}
-    />
+    <View style={{ flex: 1 }}>
+      <FlashList
+        ref={listRef}
+        data={items}
+        // Recién cuando la lista terminó de armarse se empieza a mirar si está al final.
+        onLoad={() => onListReady(initialIndex === items.length - 1)}
+        keyExtractor={keyOf}
+        getItemType={itemType}
+        renderItem={renderItem}
+        initialScrollIndex={initialIndex}
+        // La lista nunca baja por su cuenta: mantiene a la vista lo que se
+        // estaba leyendo aunque arriba o abajo cambie algo.
+        maintainVisibleContentPosition={{ autoscrollToBottomThreshold: 0 }}
+        // Solo si ya estaba al final sigue a lo que llega...
+        onContentSizeChange={() => stayAtEnd(true)}
+        // ...y lo mismo cuando la lista se achica: sale el teclado o aparece la cita.
+        onLayout={() => stayAtEnd(false)}
+        onScroll={handleScroll}
+        scrollEventThrottle={64}
+        // Al llegar arriba se trae la página anterior. Lo que se estaba leyendo
+        // queda en su lugar: los renglones nuevos entran por encima.
+        onStartReached={onLoadOlder}
+        onStartReachedThreshold={0.5}
+        ListHeaderComponent={OlderMessages}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingTop: space[16] }}
+        ListFooterComponent={ActivityFooter}
+      />
+      {/* Lo que queda arriba se pierde en el fondo en vez de cortarse en seco. */}
+      <TopFade visible={hasContentAbove} tint={color.fondo} clear={CLEAR_BACKGROUND} />
+    </View>
   );
 });
