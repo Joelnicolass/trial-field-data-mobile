@@ -1,0 +1,111 @@
+import type { ComponentRef, RefObject } from 'react';
+import { Platform, Pressable, View, type TextInput, type TextInputKeyPressEvent } from 'react-native';
+
+import { IconButton } from '@/ui/IconButton';
+import { Icon } from '@/ui/Icon';
+import { TextField } from '@/ui/TextField';
+import { color, space, toqueMinimo } from '@/ui/theme';
+
+import type { QuoteModel } from './model';
+import { RecordingBar } from './RecordingBar';
+import { ReplyQuote } from './ReplyQuote';
+import { useVoiceRecorder } from './useVoiceRecorder';
+
+type Props = {
+  value: string;
+  onChangeText: (text: string) => void;
+  onSend: () => void;
+  /** Manda el audio que se acaba de grabar. `durationMs`: cuánto duró. */
+  onSendVoice: (durationMs: number) => void;
+  /** Suma una "@" para mencionar a alguien. */
+  onMention: () => void;
+  /** El mensaje al que se está respondiendo, si hay. */
+  replyingTo?: QuoteModel;
+  onCancelReply?: () => void;
+  /** Para darle foco al campo desde afuera: al responder o al mencionar. */
+  inputRef?: RefObject<ComponentRef<typeof TextInput> | null>;
+};
+
+// Donde se escribe. Con el campo vacío, el botón es el micrófono: al tocarlo
+// la barra de grabación ocupa el lugar del campo de texto. Qué se manda y a
+// quién lo decide la pantalla.
+export function Composer({ value, onChangeText, onSend, onSendVoice, onMention, replyingTo, onCancelReply, inputRef }: Props) {
+  const hasText = value.trim() !== '';
+  const recorder = useVoiceRecorder();
+
+  return (
+    <View
+      style={{
+        backgroundColor: color.superficie,
+        borderTopWidth: 1,
+        borderTopColor: color.divisor,
+        paddingHorizontal: space[8],
+        paddingVertical: space[8],
+        gap: space[8],
+      }}
+    >
+      {replyingTo ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[8], paddingLeft: space[8] }}>
+          <View style={{ flex: 1 }}>
+            <ReplyQuote {...replyingTo} />
+          </View>
+          <IconButton icon="x" accessibilityLabel="Dejar de responder" tint={color.secundario} onPress={() => onCancelReply?.()} />
+        </View>
+      ) : null}
+
+      {recorder.recording ? (
+        <RecordingBar
+          elapsed={recorder.elapsed}
+          levels={recorder.levels}
+          dotOn={recorder.dotOn}
+          onCancel={recorder.cancel}
+          onSend={() => onSendVoice(recorder.finish())}
+        />
+      ) : (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space[4] }}>
+          <IconButton icon="at-sign" accessibilityLabel="Mencionar a alguien" tint={color.secundario} onPress={onMention} />
+          <View style={{ flex: 1 }}>
+            <TextField
+              ref={inputRef}
+              placeholder="Escribí un mensaje"
+              value={value}
+              onChangeText={onChangeText}
+              multiline
+              // En la web, Enter envía y Shift + Enter baja de línea, como en cualquier chat
+              // de escritorio. En el teléfono Enter baja de línea: se envía con el botón.
+              onKeyPress={(event) => {
+                if (Platform.OS === 'web' && isPlainEnter(event)) {
+                  event.preventDefault();
+                  onSend();
+                }
+              }}
+            />
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={hasText ? 'Enviar' : 'Grabar un audio'}
+            onPress={hasText ? onSend : recorder.start}
+            style={({ pressed }) => ({
+              width: toqueMinimo,
+              height: toqueMinimo,
+              borderRadius: toqueMinimo / 2,
+              marginLeft: space[4],
+              backgroundColor: pressed ? color.primarioOscuroHover : color.primarioOscuro,
+              alignItems: 'center',
+              justifyContent: 'center',
+            })}
+          >
+            <Icon name={hasText ? 'send' : 'mic'} size={20} tint={color.superficie} />
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}
+
+/** Si se apretó Enter solo, sin Shift. */
+function isPlainEnter(event: TextInputKeyPressEvent): boolean {
+  // `shiftKey` solo existe en la web: por eso no está en el tipo de React Native.
+  const { key, shiftKey } = event.nativeEvent as { key: string; shiftKey?: boolean };
+  return key === 'Enter' && !shiftKey;
+}

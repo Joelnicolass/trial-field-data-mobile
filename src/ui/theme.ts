@@ -38,6 +38,10 @@ export const categorias = ['#0D47A1', '#00897B', '#F9A825', '#6A1B9A', '#C62828'
 export const otras = '#9CA3AF';
 
 export const espacio = [4, 8, 12, 16, 20, 24, 32, 40] as const;
+
+// Los mismos ocho pasos, con nombre. `space[16]` se lee mejor que `espacio[3]`,
+// y TypeScript rechaza un paso que no esté en la escala, como `space[18]`.
+export const space = { 4: 4, 8: 8, 12: 12, 16: 16, 20: 20, 24: 24, 32: 32, 40: 40 } as const;
 export const radio = { boton: 8, chip: 8, tarjeta: 8, input: 8, hoja: 8, etiqueta: 5 } as const;
 export const toqueMinimo = 44;
 
