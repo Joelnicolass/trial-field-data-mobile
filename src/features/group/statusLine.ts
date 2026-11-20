@@ -1,9 +1,10 @@
 import { typingMembers, type ChatState } from '@/domain/chat';
+import type { AgentStatus } from '@/server/mock-server';
 
 /** Lo que hace el agente, en palabras. Sin texto cuando no hace nada. */
-export function agentActivity(chat: ChatState): { text: string; slow: boolean } | null {
-  if (chat.agentStatus === 'thinking') return { text: 'El agente está pensando…', slow: false };
-  if (chat.agentStatus === 'slow') return { text: 'El agente está tardando más de lo normal…', slow: true };
+export function agentActivity(status: AgentStatus): { text: string; slow: boolean } | null {
+  if (status === 'thinking') return { text: 'El agente está pensando…', slow: false };
+  if (status === 'slow') return { text: 'El agente está tardando más de lo normal…', slow: true };
   return null;
 }
 
@@ -20,5 +21,5 @@ export function typingActivity(chat: ChatState): string | null {
 
 /** La segunda línea de la barra superior: lo que pasa ahora o, si no pasa nada, cuántos son. */
 export function statusLine(chat: ChatState): string {
-  return typingActivity(chat) ?? agentActivity(chat)?.text ?? `${chat.members.length} integrantes`;
+  return typingActivity(chat) ?? agentActivity(chat.agentStatus)?.text ?? `${chat.members.length} integrantes`;
 }

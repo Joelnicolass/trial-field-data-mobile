@@ -126,20 +126,3 @@ export type GroupRow =
     };
 
 export type ActivityModel = { text: string; slow: boolean };
-
-export type GroupScreenModel = {
-  title: string;
-  /** La segunda línea de la barra superior. */
-  statusLine: string;
-  rows: GroupRow[];
-  /** En qué renglón abrir: lo primero sin leer o, si no hay, el último. */
-  initialIndex: number;
-  /** Lo que pasa ahora, al pie de la lista. */
-  activity: ActivityModel[];
-  /** Un aviso para mostrar abajo, ya escrito. `null` si no hay. */
-  notice: string | null;
-  /** A quién se puede mencionar: todos menos yo. */
-  mentionOptions: MentionOption[];
-  /** El aviso de que no hay señal, ya escrito. `null` cuando hay. */
-  offlineNotice: { title: string; text: string } | null;
-};

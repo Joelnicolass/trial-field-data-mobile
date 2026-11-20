@@ -5,14 +5,12 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
-import { useMemo } from 'react';
 import { create } from 'zustand';
 
 import {
   applyEvent,
   changeAgentMode,
   chatFromSnapshot,
-  currentDatos,
   dropActivity,
   dropExpiredTyping,
   endDatoSave,
@@ -26,6 +24,7 @@ import {
   type ChatState,
   type Outgoing,
 } from '@/domain/chat';
+import { datosOf } from '@/domain/chatQueries';
 import data from '@/server/mock-data.json';
 import {
   completeDato,
@@ -243,8 +242,14 @@ function currentTime(): string {
   return new Date(ms - 3 * 3600 * 1000).toISOString().slice(0, 19) + '-03:00';
 }
 
-/** Cómo está ahora cada dato del grupo. Lo usan las dos pestañas. */
+const NO_DATOS: Record<string, Dato> = {};
+
+/**
+ * Cómo está ahora cada dato del grupo. Lo usan las dos pestañas.
+ *
+ * `datosOf` recuerda su última respuesta: quien usa este hook se entera solo
+ * cuando un dato cambia, no cada vez que llega un mensaje.
+ */
 export function useDatos(): Record<string, Dato> {
-  const messages = useChatStore((state) => state.chat?.messages);
-  return useMemo(() => (messages ? currentDatos(messages) : {}), [messages]);
+  return useChatStore((state) => (state.chat ? datosOf(state.chat.messages) : NO_DATOS));
 }

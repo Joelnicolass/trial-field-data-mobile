@@ -83,9 +83,9 @@ Los datos van en una sola dirección:
 | Capa | Dónde | Qué hace |
 |---|---|---|
 | Servidor | `src/server/` | Los dos archivos de la consigna. |
-| Datos | `src/domain/`, `src/store/` | Funciones puras que aplican cada evento y devuelven el estado nuevo. `chatStore.ts` es el único archivo que habla con el servidor. |
-| Mappers | `src/features/*/mappers.ts` | Funciones puras que convierten el estado en lo que la pantalla necesita: textos ya escritos. |
-| Pantalla | `src/features/`, `src/ui/` | Un hook por pestaña entrega el modelo y los componentes lo dibujan. |
+| Datos | `src/domain/`, `src/store/` | Funciones puras que aplican cada evento y devuelven el estado nuevo. `chatStore.ts` es el único archivo que habla con el servidor. Las consultas de `chatQueries.ts` leen del estado y recuerdan su última respuesta. |
+| Mappers | `src/features/*/mappers.ts` | Funciones puras que convierten el estado en lo que la pantalla necesita: textos ya escritos. En el grupo hay una por renglón. |
+| Pantalla | `src/features/`, `src/ui/` | Los hooks entregan el modelo y los componentes lo dibujan. En el grupo, la barra, la lista y cada renglón se suscriben a lo suyo. |
 
 `src/features/*/model.ts` dice qué espera recibir cada pantalla. Ningún componente importa tipos del servidor ni formatea un número o una fecha.
 
@@ -94,6 +94,7 @@ Tres reglas sostienen el resto:
 - **Mismo resultado siempre.** Aplicar un evento dos veces, o en otro orden, deja el estado igual. El servidor entrega mensajes tarde y repetidos, y así ninguno de los dos casos rompe nada.
 - **Nada se copia.** Lo que se puede calcular se calcula al mostrarlo: cómo está un dato, cuánto llovió en el mes.
 - **Los efectos solo hablan con afuera.** Conectarse al abrir y avisar que leí. Ninguno dispara a otro.
+- **Cada parte de la pantalla mira solo lo suyo.** Un mensaje nuevo dibuja un renglón, el cambio de un dato redibuja su tarjeta, y alguien escribiendo no toca la lista.
 
 ## Decisiones
 

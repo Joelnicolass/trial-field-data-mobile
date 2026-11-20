@@ -2,20 +2,20 @@
 //
 //   servidor → datos (estado) → MAPPERS → pantalla
 //
-// Funciones puras: reciben el estado y la hora, y devuelven los renglones con
-// sus textos ya escritos. Acá se decide y se formatea todo; los componentes
-// solo ponen cada texto en su lugar.
+// Funciones puras, una por cada parte de la pantalla. La más importante es
+// `toRow`: recibe un renglón de la lista y lo que ese renglón necesita, y
+// devuelve su modelo con los textos ya escritos. Como cada renglón se arma
+// por separado, un cambio en uno no obliga a rearmar los demás.
 
-import type { ChatState, DatoSave, Outgoing } from '@/domain/chat';
+import type { DatoSave } from '@/domain/chat';
 import { formatDate, formatDuration, formatNumber, formatQuantity, formatTime, formatValue } from '@/domain/format';
-import type { Card, Dato, Field, Member, Message, Table } from '@/server/mock-server';
+import type { AgentStatus, Card, Dato, Field, Member, MemberId, Message, Table } from '@/server/mock-server';
 
 import type {
   ActivityModel,
   AgentContent,
   DatoModel,
   GroupRow,
-  GroupScreenModel,
   MentionOption,
   MetricModel,
   PersonBody,
@@ -24,69 +24,99 @@ import type {
   TableModel,
 } from './model';
 import { roleLabel } from './roles';
-import { agentActivity, statusLine, typingActivity } from './statusLine';
-import { buildTimeline, messageSnippet, type TimelineItem } from './timeline';
+import { agentActivity } from './statusLine';
+import { messageSnippet, type TimelineItem } from './timeline';
 
-/** Lo que cada renglón necesita consultar mientras se arma. */
-type Context = {
-  chat: ChatState;
-  now: string;
-  /** Cómo está ahora cada dato. */
-  datos: Record<string, Dato>;
+/**
+ * Lo que un renglón necesita para armarse, además de su propio mensaje. Lo
+ * junta `rowSources`. Si nada de esto cambia, el renglón tampoco.
+ */
+export type RowSources = {
+  /** Quién soy yo. */
+  me: MemberId;
   membersById: Map<string, Member>;
-  messagesBySeq: Map<number, Message>;
+  /** La hora actual, en ISO. */
+  now: string;
+  /** El mensaje al que este responde, si responde a alguno. */
+  quoted: Message | undefined;
+  /** Cuánto duró, si lo mandé como audio. */
+  voiceMs: number | undefined;
+  /** Cómo está ahora el dato que lleva este mensaje, si lleva uno. */
+  dato: Dato | undefined;
+  /** El intento de completar ese dato, si hay uno. */
+  save: DatoSave | undefined;
 };
 
-/** Lo que la pantalla necesita saber además del grupo. */
-type ScreenOptions = {
-  /** El código de algo que hay que avisar abajo, si hay. */
-  noticeCode?: string | null;
-  /** Si hay señal. */
-  online?: boolean;
-};
+/** El modelo de un renglón. `null` si el mensaje es de alguien que no está en el grupo. */
+export function toRow(item: TimelineItem, sources: RowSources): GroupRow | null {
+  if (item.kind === 'day') return { kind: 'day', key: item.key, label: formatDate(item.date, sources.now) };
+  if (item.kind === 'unread') {
+    return { kind: 'unread', key: item.key, label: item.count === 1 ? '1 mensaje sin leer' : `${item.count} mensajes sin leer` };
+  }
+  if (item.kind === 'outgoing') return toOutgoingRow(item, sources);
 
-/** Toda la pantalla del grupo, lista para dibujar. */
-export function toGroupScreen(
-  chat: ChatState,
-  datos: Record<string, Dato>,
-  now: string,
-  { noticeCode = null, online = true }: ScreenOptions = {},
-): GroupScreenModel {
-  const context: Context = {
-    chat,
-    now,
-    datos,
-    membersById: new Map(chat.members.map((member) => [member.id, member])),
-    messagesBySeq: new Map(chat.messages.map((message) => [message.seq, message])),
-  };
+  const { message } = item;
+  const sender = sources.membersById.get(message.sender_id);
+  if (!sender) return null;
 
-  const timeline = buildTimeline(chat.messages, chat);
-  const rows = [
-    ...timeline.flatMap((item, index) => toRow(item, timeline[index - 1], context) ?? []),
-    // Lo que todavía no salió va al final, en el orden en que lo escribí.
-    ...chat.outbox.map((outgoing) => toOutgoingRow(outgoing, context)),
-  ];
-  const unreadIndex = rows.findIndex((row) => row.kind === 'unread');
+  // Un aviso del grupo o quién cambió un dato: una línea, sin globo.
+  if (message.type === 'system' || message.type === 'dato_change') {
+    return { kind: 'line', key: item.key, text: message.text ?? '', isChange: message.type === 'dato_change' };
+  }
 
+  if (sender.is_agent) {
+    return {
+      kind: 'agent',
+      key: item.key,
+      time: formatTime(message.created_at),
+      // El rótulo va solo en el primero de varios mensajes seguidos del agente.
+      showLabel: !item.followsSameSender,
+      content: toAgentContent(message, sources),
+      reply: toReplyTarget(message, sources),
+    };
+  }
+
+  const isMine = message.sender_id === sources.me;
   return {
-    title: chat.name,
-    statusLine: statusLine(chat),
-    rows,
-    initialIndex: unreadIndex >= 0 ? unreadIndex : rows.length - 1,
-    activity: toActivity(chat),
-    notice: noticeCode ? (NOTICE[noticeCode] ?? null) : null,
-    mentionOptions: toMentionOptions(chat),
-    offlineNotice: online ? null : OFFLINE_NOTICE,
+    kind: 'person',
+    key: item.key,
+    author: isMine ? null : `${sender.short_name} · ${roleLabel(sender.role)}`,
+    isMine,
+    mentionsMe: message.mentions.includes(sources.me),
+    time: formatTime(message.created_at),
+    quote: sources.quoted ? toQuoteOf(sources.quoted, sources) : null,
+    body: toPersonBody(message, sources.voiceMs),
+    delivery: isMine ? 'sent' : null,
+    localId: null,
+    reply: toReplyTarget(message, sources),
   };
 }
 
-// Qué pasa y qué va a pasar con lo que se mande, como pide la guía para los errores.
-const OFFLINE_NOTICE = { title: 'Sin conexión', text: 'Lo que mandes sale solo cuando vuelva la señal.' };
+/** Un mensaje mío que se está enviando o falló: se ve como cualquiera de los míos, con su estado. */
+function toOutgoingRow(item: Extract<TimelineItem, { kind: 'outgoing' }>, sources: RowSources): GroupRow {
+  const { outgoing } = item;
+  return {
+    kind: 'person',
+    key: item.key,
+    author: null,
+    isMine: true,
+    mentionsMe: false,
+    time: formatTime(outgoing.createdAt),
+    quote: sources.quoted ? toQuoteOf(sources.quoted, sources) : null,
+    body: toOwnBody(outgoing.text, sources.voiceMs),
+    delivery: outgoing.status,
+    localId: outgoing.localId,
+    // Todavía no tiene número de orden: no se le puede responder.
+    reply: null,
+  };
+}
+
+// ── El resto de la pantalla ────────────────────────────────────────────────
 
 // A quién puedo mencionar: todos menos yo. El agente va primero, porque es a
 // quien más se le pregunta.
-function toMentionOptions(chat: ChatState): MentionOption[] {
-  const others = chat.members.filter((member) => member.id !== chat.me);
+export function toMentionOptions(members: Member[], me: MemberId): MentionOption[] {
+  const others = members.filter((member) => member.id !== me);
   return [...others.filter((member) => member.is_agent), ...others.filter((member) => !member.is_agent)].map((member) => ({
     key: member.id,
     name: member.short_name,
@@ -102,79 +132,33 @@ const NOTICE: Record<string, string> = {
   not_found: 'Ese dato ya no está en el grupo.',
 };
 
-function toActivity(chat: ChatState): ActivityModel[] {
-  const typing = typingActivity(chat);
-  const agent = agentActivity(chat);
+/** El aviso de abajo, ya escrito. `null` si no hay nada que avisar. */
+export function toNotice(noticeCode: string | null): string | null {
+  return noticeCode ? (NOTICE[noticeCode] ?? null) : null;
+}
+
+/**
+ * El aviso de que no hay señal: qué pasa y qué va a pasar con lo que se
+ * mande, como pide la guía para los errores. `null` cuando hay señal.
+ */
+export function toOfflineNotice(online: boolean): { title: string; text: string } | null {
+  return online ? null : { title: 'Sin conexión', text: 'Lo que mandes sale solo cuando vuelva la señal.' };
+}
+
+/**
+ * Lo que pasa ahora, para el pie de la lista.
+ *
+ * @param typing Quién escribe, ya escrito ("Ramón está escribiendo…"), o `null`.
+ */
+export function toActivity(typing: string | null, agentStatus: AgentStatus): ActivityModel[] {
+  const agent = agentActivity(agentStatus);
   return [...(typing ? [{ text: typing, slow: false }] : []), ...(agent ? [agent] : [])];
-}
-
-function toRow(item: TimelineItem, previous: TimelineItem | undefined, context: Context): GroupRow | null {
-  if (item.kind === 'day') return { kind: 'day', key: item.key, label: formatDate(item.date, context.now) };
-  if (item.kind === 'unread') {
-    return { kind: 'unread', key: item.key, label: item.count === 1 ? '1 mensaje sin leer' : `${item.count} mensajes sin leer` };
-  }
-
-  const { message } = item;
-  const sender = context.membersById.get(message.sender_id);
-  if (!sender) return null;
-
-  // Un aviso del grupo o quién cambió un dato: una línea, sin globo.
-  if (message.type === 'system' || message.type === 'dato_change') {
-    return { kind: 'line', key: item.key, text: message.text ?? '', isChange: message.type === 'dato_change' };
-  }
-
-  if (sender.is_agent) {
-    const previousIsAgent = previous?.kind === 'message' && previous.message.sender_id === message.sender_id;
-    return {
-      kind: 'agent',
-      key: item.key,
-      time: formatTime(message.created_at),
-      showLabel: !previousIsAgent,
-      content: toAgentContent(message, context),
-      reply: toReplyTarget(message, context),
-    };
-  }
-
-  const isMine = message.sender_id === context.chat.me;
-  return {
-    kind: 'person',
-    key: item.key,
-    author: isMine ? null : `${sender.short_name} · ${roleLabel(sender.role)}`,
-    isMine,
-    mentionsMe: message.mentions.includes(context.chat.me),
-    time: formatTime(message.created_at),
-    quote: toQuote(message, context),
-    body: toPersonBody(message, context.chat.voiceNotes),
-    delivery: isMine ? 'sent' : null,
-    localId: null,
-    reply: toReplyTarget(message, context),
-  };
-}
-
-/** Un mensaje mío que se está enviando o falló: se ve como cualquiera de los míos, con su estado. */
-function toOutgoingRow(outgoing: Outgoing, context: Context): GroupRow {
-  const quoted = outgoing.replyTo === null ? undefined : context.messagesBySeq.get(outgoing.replyTo);
-  return {
-    kind: 'person',
-    key: `local-${outgoing.localId}`,
-    author: null,
-    isMine: true,
-    mentionsMe: false,
-    time: formatTime(outgoing.createdAt),
-    quote: quoted ? toQuoteOf(quoted, context) : null,
-    body: toOwnBody(outgoing.text, context.chat.voiceNotes[outgoing.localId]),
-    delivery: outgoing.status,
-    localId: outgoing.localId,
-    // Todavía no tiene número de orden: no se le puede responder.
-    reply: null,
-  };
 }
 
 // ── Personas ───────────────────────────────────────────────────────────────
 
-function toPersonBody(message: Message, voiceNotes: ChatState['voiceNotes']): PersonBody {
+function toPersonBody(message: Message, voiceMs: number | undefined): PersonBody {
   // Lo que mandé como audio vuelve del servidor como texto: acá recupera su forma.
-  const voiceMs = message.local_id ? voiceNotes[message.local_id] : undefined;
   if (voiceMs !== undefined) return toOwnBody(message.text ?? '', voiceMs);
 
   if (message.type === 'audio') {
@@ -195,33 +179,26 @@ function toOwnBody(text: string, voiceMs: number | undefined): PersonBody {
   return { kind: 'audio', duration: formatDuration(voiceMs), transcript: text };
 }
 
-/** El mensaje al que responde este, resumido en una línea. */
-function toQuote(message: Message, context: Context): QuoteModel | null {
-  if (message.reply_to === null) return null;
-  const quoted = context.messagesBySeq.get(message.reply_to);
-  return quoted ? toQuoteOf(quoted, context) : null;
-}
-
 /** Lo que hace falta para responderle a este mensaje. */
-function toReplyTarget(message: Message, context: Context): ReplyTarget {
-  return { seq: message.seq, quote: toQuoteOf(message, context) };
+function toReplyTarget(message: Message, sources: RowSources): ReplyTarget {
+  return { seq: message.seq, quote: toQuoteOf(message, sources) };
 }
 
-function toQuoteOf(quoted: Message, context: Context): QuoteModel {
-  const author = context.membersById.get(quoted.sender_id);
+/** Un mensaje resumido en una línea, para citarlo. */
+function toQuoteOf(quoted: Message, sources: RowSources): QuoteModel {
+  const author = sources.membersById.get(quoted.sender_id);
   return { author: author?.is_agent ? 'Agente' : (author?.short_name ?? ''), snippet: messageSnippet(quoted) };
 }
 
 // ── Agente ─────────────────────────────────────────────────────────────────
 
-function toAgentContent(message: Message, context: Context): AgentContent {
+function toAgentContent(message: Message, sources: RowSources): AgentContent {
   if (message.type === 'dato' && message.dato) {
     // La tarjeta muestra el dato como está ahora, no como era en este mensaje.
-    const current = context.datos[message.dato.id] ?? message.dato;
-    return { kind: 'dato', dato: toDatoModel(current, message, context.now, context.chat.datoSaves[current.id]) };
+    return { kind: 'dato', dato: toDatoModel(sources.dato ?? message.dato, message, sources.now, sources.save) };
   }
-  if (message.type === 'card' && message.card) return { kind: 'metric', metric: toMetricModel(message.card, context.now) };
-  if (message.type === 'table' && message.table) return { kind: 'table', table: toTableModel(message.table, context.now) };
+  if (message.type === 'card' && message.card) return { kind: 'metric', metric: toMetricModel(message.card, sources.now) };
+  if (message.type === 'table' && message.table) return { kind: 'table', table: toTableModel(message.table, sources.now) };
   return { kind: 'text', text: message.text ?? '' };
 }
 
