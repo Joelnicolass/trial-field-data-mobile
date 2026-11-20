@@ -38,6 +38,9 @@ type Props = {
 /** Cuánto dura un aviso abajo si nadie lo cierra, según la guía. */
 const NOTICE_MS = 7000;
 
+/** Cuánto sigue la lista al final después de enviar algo. */
+const FOLLOW_AFTER_SEND_MS = 1000;
+
 // La lista del grupo y el composer. Abre parada en lo primero sin leer y no
 // se mueve sola mientras se lee más arriba.
 export function GroupChatView({
@@ -58,20 +61,29 @@ export function GroupChatView({
 
   useAutoDismiss(model.notice !== null, onDismissNotice, NOTICE_MS);
 
+  // Hasta cuándo la lista sigue al final porque acabo de mandar algo.
+  const followUntil = useRef(0);
+
   /** Si la lista ya estaba al final, la deja al final. Si se leía más arriba, no la mueve. */
   function stayAtEnd(animated: boolean) {
-    if (atBottom) listRef.current?.scrollToEnd({ animated });
+    if (atBottom || Date.now() < followUntil.current) listRef.current?.scrollToEnd({ animated });
+  }
+
+  /** Lo que acabo de mandar tiene que verse: la lista baja hasta el final. */
+  function showWhatISent() {
+    // El renglón nuevo se mide un instante después (en la web se nota). Durante
+    // ese rato la lista sigue al final aunque todavía no haya llegado.
+    followUntil.current = Date.now() + FOLLOW_AFTER_SEND_MS;
+    requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
   }
 
   function sendVoice(durationMs: number) {
     composer.submitVoice(durationMs);
-    requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+    showWhatISent();
   }
 
   function send() {
-    if (!composer.submit()) return;
-    // Lo que acabo de mandar tiene que verse: la lista baja hasta el final.
-    requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+    if (composer.submit()) showWhatISent();
   }
 
   return (
