@@ -10,6 +10,7 @@ import { create } from 'zustand';
 
 import {
   applyEvent,
+  changeAgentMode,
   chatFromSnapshot,
   currentDatos,
   dropActivity,
@@ -33,7 +34,9 @@ import {
   markRead,
   send,
   ServerError,
+  setAgentMode as setServerAgentMode,
   setOnline as setServerOnline,
+  type AgentMode,
   type Dato,
   type ServerEvent,
 } from '@/server/mock-server';
@@ -68,6 +71,8 @@ type ChatStore = {
   /** Si hay señal. Se cambia desde Opciones, para simular el corte. */
   online: boolean;
   setOnline: (online: boolean) => void;
+  /** Cambia el modo del agente. Se elige desde "Info del grupo". */
+  setAgentMode: (mode: AgentMode) => void;
 };
 
 // Errores en los que el dato ya está como tiene que estar: no hay nada que
@@ -138,6 +143,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const failed = get().chat?.outbox.filter((item) => item.status === 'failed') ?? [];
       failed.forEach(deliver);
     }
+  },
+
+  setAgentMode: (mode) => {
+    // El servidor lo cambia en el momento y no devuelve nada: no hay
+    // respuesta que esperar ni error que mostrar.
+    setServerAgentMode(mode);
+    updateChat((chat) => changeAgentMode(chat, mode));
   },
 
   completeDato: async (datoId, version, values) => {
