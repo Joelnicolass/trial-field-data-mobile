@@ -4,17 +4,19 @@ import { ActivityIndicator, View } from 'react-native';
 
 import { opensToParams } from '@/features/campo/target';
 import { GroupChatView } from '@/features/group/GroupChatView';
+import { GroupHeader } from '@/features/group/GroupHeader';
 import type { OpenTarget } from '@/features/group/model';
-import { useGroupScreen } from '@/features/group/useGroupScreen';
+import { useGroupStart } from '@/features/group/useGroupChat';
 import { EmptyState } from '@/ui/EmptyState';
 import { IconButton } from '@/ui/IconButton';
-import { ScreenHeader } from '@/ui/ScreenHeader';
 import { color } from '@/ui/theme';
 
-// El grupo del campo. Recibe del hook un modelo listo y lo dibuja.
+// El grupo del campo. Acá solo se decide qué se muestra según cómo va la
+// carga y adónde se navega. Cada parte de la pantalla (la barra, la lista,
+// cada renglón) lee del store lo suyo.
 export default function GroupScreen() {
   const router = useRouter();
-  const { status, model, retry, newCount, atBottom, onScroll, onListReady, sendText, sendVoice, retrySend, completeDato, dismissNotice } = useGroupScreen();
+  const { status, retry } = useGroupStart();
 
   // Tocar una tarjeta abre Campo en lo que esa tarjeta indica. El grupo
   // queda montado detrás: al volver está como se lo dejó.
@@ -32,9 +34,7 @@ export default function GroupScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: color.fondo }}>
-      <ScreenHeader
-        title={model?.title ?? 'Grupo'}
-        subtitle={model?.statusLine}
+      <GroupHeader
         right={
           <View style={{ flexDirection: 'row' }}>
             <IconButton icon="info" accessibilityLabel="Info del grupo" tint={color.sobreNavy} onPress={() => router.push('/info-grupo')} />
@@ -43,20 +43,8 @@ export default function GroupScreen() {
         }
       />
 
-      {model ? (
-        <GroupChatView
-          model={model}
-          newCount={newCount}
-          atBottom={atBottom}
-          onScroll={onScroll}
-          onListReady={onListReady}
-          onOpen={openInCampo}
-          onSend={sendText}
-          onSendVoice={sendVoice}
-          onRetry={retrySend}
-          onComplete={(dato, values) => completeDato(dato.datoId, dato.version, values)}
-          onDismissNotice={dismissNotice}
-        />
+      {status === 'ready' ? (
+        <GroupChatView onOpen={openInCampo} />
       ) : (
         <View style={{ flex: 1, justifyContent: 'center' }}>
           {status === 'error' ? (

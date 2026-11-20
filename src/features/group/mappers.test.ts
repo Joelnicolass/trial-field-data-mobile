@@ -1,8 +1,10 @@
-import { chatFromSnapshot, currentDatos, failDatoSave, markVoiceNote, queueOutgoing, startDatoSave, type ChatState } from '@/domain/chat';
+import { applyEvent, chatFromSnapshot, failDatoSave, markVoiceNote, queueOutgoing, startDatoSave, type ChatState } from '@/domain/chat';
 import type { ChatSnapshot, Dato, Message } from '@/server/mock-server';
 
-import { toGroupScreen } from './mappers';
+import { toMentionOptions, toNotice, toOfflineNotice, toRow } from './mappers';
 import type { GroupRow } from './model';
+import { rowSources } from './rowSources';
+import { buildTimeline } from './timeline';
 
 const NOW = '2026-11-18T07:10:00-03:00';
 
@@ -74,14 +76,19 @@ function screenFor(messages: Message[], prepare: (chat: ChatState) => ChatState 
     cursor: 0,
   };
   const chat = prepare(chatFromSnapshot({ ...snapshot, members: snapshot.members.map((m) => (m.id === 'u_01' ? { ...m, watermark: 999 } : m)) }));
-  return toGroupScreen(chat, currentDatos(chat.messages), NOW);
+  return { chat, rows: rowsOf(chat), mentionOptions: toMentionOptions(chat.members, chat.me) };
+}
+
+/** Todos los renglones de un estado, armados uno por uno como lo hace la pantalla. */
+function rowsOf(chat: ChatState): GroupRow[] {
+  return buildTimeline(chat.messages, chat.outbox, chat).flatMap((item) => toRow(item, rowSources(chat, item, NOW)) ?? []);
 }
 
 function rowOf<Kind extends GroupRow['kind']>(rows: GroupRow[], kind: Kind) {
   return rows.find((row): row is Extract<GroupRow, { kind: Kind }> => row.kind === kind);
 }
 
-describe('toGroupScreen', () => {
+describe('los renglones del grupo', () => {
   it('a los demás les pone nombre y rol; a lo mío, no', () => {
     const { rows } = screenFor([message(1), message(2, { sender_id: 'u_01' })]);
     const people = rows.filter((row) => row.kind === 'person');
@@ -157,7 +164,7 @@ describe('toGroupScreen', () => {
     });
     const save = { localId: 'l_9', values: { vaccine: 'x' } };
     const datoOf = (state: typeof chat) => {
-      const content = rowOf(toGroupScreen(state, currentDatos(state.messages), NOW).rows, 'agent')?.content;
+      const content = rowOf(rowsOf(state), 'agent')?.content;
       return content?.kind === 'dato' ? content.dato : undefined;
     };
 
@@ -172,9 +179,8 @@ describe('toGroupScreen', () => {
   });
 
   it('avisa cuando otro completó el dato antes', () => {
-    const chat = chatFromSnapshot({ id: 'g', name: 'Grupo', agent_mode: 'detect', me: 'u_01', members: [], messages: [], unsent: [], cursor: 0 });
-    expect(toGroupScreen(chat, {}, NOW, { noticeCode: 'stale_version' }).notice).toBe('Alguien lo completó antes que vos. La tarjeta muestra cómo quedó.');
-    expect(toGroupScreen(chat, {}, NOW).notice).toBeNull();
+    expect(toNotice('stale_version')).toBe('Alguien lo completó antes que vos. La tarjeta muestra cómo quedó.');
+    expect(toNotice(null)).toBeNull();
   });
 
   it('lo que mandé como audio se ve como audio, antes y después de salir', () => {
@@ -192,12 +198,8 @@ describe('toGroupScreen', () => {
   });
 
   it('sin señal avisa qué pasa con lo que se mande', () => {
-    const chat = chatFromSnapshot({ id: 'g', name: 'Grupo', agent_mode: 'detect', me: 'u_01', members: [], messages: [], unsent: [], cursor: 0 });
-    expect(toGroupScreen(chat, {}, NOW, { online: false }).offlineNotice).toEqual({
-      title: 'Sin conexión',
-      text: 'Lo que mandes sale solo cuando vuelva la señal.',
-    });
-    expect(toGroupScreen(chat, {}, NOW).offlineNotice).toBeNull();
+    expect(toOfflineNotice(false)).toEqual({ title: 'Sin conexión', text: 'Lo que mandes sale solo cuando vuelva la señal.' });
+    expect(toOfflineNotice(true)).toBeNull();
   });
 
   it('en una tabla, lo que falta sale como una raya', () => {
@@ -257,3 +259,64 @@ describe('toGroupScreen', () => {
     expect(pending).toMatchObject({ delivery: 'sending', quote: { author: 'Ramón', snippet: 'llovieron 23' }, reply: null });
   });
 });
+
+describe('lo que mira cada renglón', () => {
+  const history = [
+    message(1, { text: 'llovieron 23' }),
+    message(2, { sender_id: 'agent', type: 'dato', text: 'Anoté la lluvia.', dato: rain }),
+    message(3, { sender_id: 'agent', type: 'dato', text: 'Me falta qué vacuna usaste.', dato: vaccination }),
+    message(4, { reply_to: 1, text: 'en el casco' }),
+  ];
+
+  /** Lo que mira cada renglón, por clave. */
+  function sourcesByKey(chat: ChatState) {
+    const items = buildTimeline(chat.messages, chat.outbox, chat);
+    return new Map(items.map((item) => [item.key, rowSources(chat, item, NOW)]));
+  }
+
+  /** Las claves de los renglones cuyo origen cambió entre un estado y el siguiente. */
+  function changedKeys(before: ChatState, after: ChatState): string[] {
+    const sourcesBefore = sourcesByKey(before);
+    return [...sourcesByKey(after)].flatMap(([key, sources]) => {
+      const previous = sourcesBefore.get(key);
+      const same = previous && Object.entries(sources).every(([name, value]) => previous[name as keyof typeof previous] === value);
+      return same ? [] : [key];
+    });
+  }
+
+  const { chat } = screenFor(history);
+
+  it('alguien escribiendo no cambia lo que mira ningún renglón', () => {
+    const typing = applyEvent(chat, { type: 'typing', member_id: 'u_03' }, 1000);
+    expect(changedKeys(chat, typing)).toEqual([]);
+  });
+
+  it('un mensaje nuevo no cambia lo que miran los renglones que ya estaban', () => {
+    const next = applyEvent(chat, { type: 'message', cursor: 5, message: message(5, { text: 'otro' }) }, 1000);
+    expect(changedKeys(chat, next)).toEqual(['m_5']);
+  });
+
+  it('el cambio de un dato toca solo a la tarjeta de ese dato', () => {
+    const change = message(5, {
+      sender_id: 'agent',
+      type: 'dato_change',
+      text: 'Mariano corrigió la lluvia: 23 → 25 mm',
+      dato_change: { dato_id: 'd_02', action: 'edited', by: 'u_02', version: 2, status: 'saved', changes: [{ key: 'rainfall_mm', before: 23, after: 25 }] },
+    });
+    const next = applyEvent(chat, { type: 'message', cursor: 5, message: change }, 1000);
+
+    // La tarjeta de la lluvia y la línea nueva. La de la vacunación no.
+    expect(changedKeys(chat, next).sort()).toEqual(['m_2', 'm_5']);
+  });
+
+  it('empezar a guardar un dato toca solo a su tarjeta', () => {
+    const saving = startDatoSave(chat, 'd_03', { localId: 'l_9', values: { vaccine: 'Querato' } });
+    expect(changedKeys(chat, saving)).toEqual(['m_3']);
+  });
+
+  it('una respuesta mira al mensaje que cita', () => {
+    const quoted = sourcesByKey(chat).get('m_4')?.quoted;
+    expect(quoted).toBe(chat.messages[0]);
+  });
+});
+
