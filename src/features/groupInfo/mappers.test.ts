@@ -1,5 +1,5 @@
 import { changeAgentMode, chatFromSnapshot } from '@/domain/chat';
-import type { ChatSnapshot, Member, Message } from '@/server/mock-server';
+import type { ChatSnapshot, Member, Message } from '@/domain/types';
 
 import { toGroupInfo } from './mappers';
 

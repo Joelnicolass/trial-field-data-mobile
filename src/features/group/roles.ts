@@ -1,4 +1,4 @@
-import type { Member } from '@/server/mock-server';
+import type { Member } from '@/domain/types';
 
 // Cómo se nombra cada rol en el grupo, con las palabras de la consigna.
 const ROLE_LABEL: Record<Member['role'], string> = {

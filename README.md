@@ -82,10 +82,10 @@ Los datos van en una sola dirección:
 
 | Capa | Dónde | Qué hace |
 |---|---|---|
-| Servidor | `src/server/` | Los dos archivos de la consigna. |
-| Datos | `src/domain/`, `src/store/` | Funciones puras que aplican cada evento y devuelven el estado nuevo. `chatStore.ts` es el único archivo que habla con el servidor. |
-| Mappers | `src/features/*/mappers.ts` | Funciones puras que convierten el estado en lo que la pantalla necesita: textos ya escritos. |
-| Pantalla | `src/features/`, `src/ui/` | Un hook por pestaña entrega el modelo y los componentes lo dibujan. |
+| Servidor | `src/server/`, `src/api/` | Los dos archivos de la consigna, detrás de una interfaz propia (`ChatApi`). Solo `src/api/` los importa: cambiar de servidor es escribir otro adaptador. |
+| Datos | `src/domain/`, `src/store/` | Funciones puras que aplican cada evento y devuelven el estado nuevo. `chatStore.ts` es el único que habla con el servidor, a través de esa interfaz. Un mensaje se busca por su número sin recorrer el historial, y cada dato se guarda como está ahora. |
+| Mappers | `src/features/*/mappers.ts` | Funciones puras que convierten el estado en lo que la pantalla necesita: textos ya escritos. En el grupo hay una por renglón. |
+| Pantalla | `src/features/`, `src/ui/` | Los hooks entregan el modelo y los componentes lo dibujan. En el grupo, la barra, la lista y cada renglón se suscriben a lo suyo. |
 
 `src/features/*/model.ts` dice qué espera recibir cada pantalla. Ningún componente importa tipos del servidor ni formatea un número o una fecha.
 
@@ -94,6 +94,7 @@ Tres reglas sostienen el resto:
 - **Mismo resultado siempre.** Aplicar un evento dos veces, o en otro orden, deja el estado igual. El servidor entrega mensajes tarde y repetidos, y así ninguno de los dos casos rompe nada.
 - **Nada se copia.** Lo que se puede calcular se calcula al mostrarlo: cómo está un dato, cuánto llovió en el mes.
 - **Los efectos solo hablan con afuera.** Conectarse al abrir y avisar que leí. Ninguno dispara a otro.
+- **Cada parte de la pantalla mira solo lo suyo.** Un mensaje nuevo dibuja un renglón, el cambio de un dato redibuja su tarjeta, y alguien escribiendo no toca la lista.
 
 ## Decisiones
 
@@ -101,11 +102,14 @@ Tres reglas sostienen el resto:
 
 - **Dos pestañas, Grupo y Campo.** Son las dos vistas que pide la consigna, siempre a un toque. El grupo queda montado cuando se mira Campo, y por eso al volver está igual.
 - **El orden lo da `seq`, no la llegada.** Cada mensaje se ubica por su número de orden y se descarta si ya estaba.
-- **Un dato no se guarda aparte.** Cómo está ahora se calcula repasando los mensajes en orden: el dato original y sus cambios. La tarjeta siempre muestra el valor actual y no hay una segunda copia que pueda quedar vieja.
+- **Cada dato se guarda como está ahora.** Cuando llega un cambio se repasan, en orden, solo los mensajes de ese dato: el original y sus cambios. La tarjeta y Campo lo leen sin recorrer el historial, y el resultado no depende del orden en que llegaron.
 - **Lo que mando lleva un identificador propio.** Aparece al instante, y la confirmación, que llega por dos caminos, se une por ese identificador. Reintentar usa el mismo, así que no duplica.
 - **Completar un dato pide elegir y después confirmar.** Es un toque más que guardar al tocar la sugerencia, pero evita guardar por error: en el campo se toca con el pulgar y a veces con guantes.
 - **Si otro completó el dato antes, no se reintenta.** Se avisa y la tarjeta muestra cómo quedó.
-- **Al volver la señal se manda de nuevo lo que no había salido.** Usa el mismo identificador, así que no duplica.
+- **El historial se pide por tramos.** Al abrir llega lo último, con todo lo no leído, y lo anterior se carga al subir. El servidor de prueba lo entrega todo junto, así que su adaptador lo reparte en páginas. Las páginas son de diez mensajes porque el historial de prueba tiene veinte.
+- **Los datos llegan aparte del historial.** Así Campo cuenta una lluvia aunque el mensaje que la anotó no esté cargado.
+- **La conexión se retoma desde el último evento recibido.** Al quedarse sin señal o pasar a segundo plano se cierra, y al volver se pide lo que pasó después de ese punto. Llega por el mismo camino que cualquier evento.
+- **Al volver la señal se manda de nuevo lo que no había salido,** de a uno y en el orden en que se escribió. Usa el mismo identificador, así que no duplica.
 - **Sin señal no se muestra quién escribe ni qué hace el agente.** Son avisos que ya no se pueden actualizar, y uno viejo confunde.
 - **La lista no baja sola.** Solo sigue a lo nuevo si ya estaba al final. Lo mismo cuando sale el teclado: si se leía más arriba, queda donde estaba.
 - **Responder es mantener apretado el mensaje.** Deslizarlo, como en WhatsApp, queda para cuando se sumen las animaciones.

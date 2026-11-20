@@ -1,18 +1,19 @@
 // El estado del grupo, compartido por las dos pestañas. Es el único lugar
-// que habla con el servidor: carga el grupo, escucha los eventos, envía, y le
-// pasa cada novedad a las funciones puras del dominio, que devuelven el
-// estado nuevo.
+// que habla con el servidor, y lo hace a través de `chatApi`: no sabe si del
+// otro lado está el servidor de prueba o uno real. Carga el grupo, escucha
+// los eventos, envía, y le pasa cada novedad a las funciones puras del
+// dominio, que devuelven el estado nuevo.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
-import { useMemo } from 'react';
+import { AppState } from 'react-native';
 import { create } from 'zustand';
 
+import { ApiError, chatApi, serverNow } from '@/api';
 import {
   applyEvent,
   changeAgentMode,
   chatFromSnapshot,
-  currentDatos,
   dropActivity,
   dropExpiredTyping,
   endDatoSave,
@@ -21,25 +22,13 @@ import {
   markVoiceNote,
   queueOutgoing,
   receiveMessage,
+  receiveOlder,
   startDatoSave,
   TYPING_MS,
   type ChatState,
   type Outgoing,
 } from '@/domain/chat';
-import data from '@/server/mock-data.json';
-import {
-  completeDato,
-  connect,
-  loadChat,
-  markRead,
-  send,
-  ServerError,
-  setAgentMode as setServerAgentMode,
-  setOnline as setServerOnline,
-  type AgentMode,
-  type Dato,
-  type ServerEvent,
-} from '@/server/mock-server';
+import type { AgentMode, Dato, ServerEvent } from '@/domain/types';
 
 type Status = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -49,6 +38,10 @@ type ChatStore = {
   chat: ChatState | null;
   /** Carga el grupo y abre la conexión. Si falló, se puede llamar de nuevo para reintentar. */
   start: () => Promise<void>;
+  /** Se están trayendo mensajes anteriores. */
+  loadingOlder: boolean;
+  /** Trae la página anterior a lo que hay cargado. No hace nada si no hay más o si ya está trayendo una. */
+  loadOlder: () => Promise<void>;
   /** Avisa al servidor hasta qué mensaje leí. */
   markReadUpTo: (seq: number) => void;
   /** Manda un texto. Aparece al instante como "enviándose". */
@@ -79,6 +72,13 @@ type ChatStore = {
 // reintentar, solo avisar.
 const NOTHING_TO_RETRY = ['stale_version', 'no_changes', 'not_found'];
 
+/**
+ * Cuántos mensajes se piden por vez. Es chico a propósito: el servidor de
+ * prueba trae veinte, y con una página más grande no habría nada anterior
+ * que cargar. Con un historial real serían treinta o cincuenta.
+ */
+const PAGE_SIZE = 10;
+
 /** Dónde se guarda en el teléfono lo que no salió. */
 const OUTBOX_KEY = 'grupo:sin-enviar';
 
@@ -97,19 +97,35 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     set({ status: 'loading' });
     try {
-      const [snapshot, stored] = await Promise.all([loadChat(), readStoredOutbox()]);
+      const [snapshot, stored] = await Promise.all([chatApi.loadChat({ limit: PAGE_SIZE }), readStoredOutbox()]);
       startedAt = Date.now();
       set({ status: 'ready', chat: chatFromSnapshot(snapshot, stored) });
 
-      disconnect?.();
-      // `after_cursor` pide solo lo que pasó después de la carga.
-      disconnect = connect(handleEvent, { after_cursor: snapshot.cursor });
+      openConnection();
+      watchAppState();
     } catch {
       set({ status: 'error' });
     }
   },
 
-  markReadUpTo: (seq) => markRead(seq),
+  loadingOlder: false,
+  loadOlder: async () => {
+    const { chat, loadingOlder } = get();
+    const oldest = chat?.messages[0];
+    if (!chat?.hasOlder || !oldest || loadingOlder) return;
+
+    set({ loadingOlder: true });
+    try {
+      const page = await chatApi.loadOlder({ before_seq: oldest.seq, limit: PAGE_SIZE });
+      updateChat((current) => receiveOlder(current, page));
+    } catch {
+      // Sin señal no hay página: se puede volver a pedir.
+    } finally {
+      set({ loadingOlder: false });
+    }
+  },
+
+  markReadUpTo: (seq) => chatApi.markRead(seq),
 
   sendText: (text, replyTo = null) => {
     // El identificador se genera una sola vez por mensaje: es lo que evita duplicados.
@@ -133,22 +149,23 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   online: true,
   setOnline: (online) => {
     set({ online });
-    if (!online) updateChat(dropActivity);
+    chatApi.setOnline(online);
 
-    // Al volver, el servidor entrega por la conexión abierta lo que se perdió.
-    setServerOnline(online);
-
-    // Y lo que no había salido se manda de nuevo, con su mismo identificador.
-    if (online) {
-      const failed = get().chat?.outbox.filter((item) => item.status === 'failed') ?? [];
-      failed.forEach(deliver);
+    if (!online) {
+      closeConnection();
+      return;
     }
+
+    // Al volver se retoma desde el último evento recibido: llega lo que se perdió.
+    openConnection();
+    // Y lo que no había salido se manda de nuevo, con su mismo identificador.
+    resendInOrder(get().chat?.outbox.filter((item) => item.status === 'failed') ?? []);
   },
 
   setAgentMode: (mode) => {
     // El servidor lo cambia en el momento y no devuelve nada: no hay
     // respuesta que esperar ni error que mostrar.
-    setServerAgentMode(mode);
+    chatApi.setAgentMode(mode);
     updateChat((chat) => changeAgentMode(chat, mode));
   },
 
@@ -162,18 +179,18 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     updateChat((chat) => startDatoSave(chat, datoId, { localId, values: filled }));
     try {
-      const change = await completeDato({ local_id: localId, dato_id: datoId, values: filled, base_version: version });
+      const change = await chatApi.completeDato({ local_id: localId, dato_id: datoId, values: filled, base_version: version });
       // El cambio también llega como evento: `receiveMessage` acepta los dos.
       updateChat((chat) => endDatoSave(receiveMessage(chat, change), datoId));
     } catch (error) {
-      const code = error instanceof ServerError ? error.code : 'no_connection';
+      const code = error instanceof ApiError ? error.code : 'no_connection';
       if (NOTHING_TO_RETRY.includes(code)) {
         // Otro lo completó antes, o no había nada que cambiar: la tarjeta ya
         // muestra cómo quedó, porque ese cambio llegó como cualquier evento.
         updateChat((chat) => endDatoSave(chat, datoId));
         set({ noticeCode: code });
       } else {
-        const field = error instanceof ServerError ? (error.field ?? null) : null;
+        const field = error instanceof ApiError ? error.field : null;
         updateChat((chat) => failDatoSave(chat, datoId, code, field));
       }
     }
@@ -193,12 +210,58 @@ useChatStore.subscribe((state, previous) => {
 async function deliver(outgoing: Omit<Outgoing, 'status'>) {
   updateChat((chat) => queueOutgoing(chat, outgoing));
   try {
-    const message = await send({ local_id: outgoing.localId, text: outgoing.text, reply_to: outgoing.replyTo });
+    const message = await chatApi.send({ local_id: outgoing.localId, text: outgoing.text, reply_to: outgoing.replyTo });
     // El mismo mensaje también llega como evento: `receiveMessage` acepta los dos.
     updateChat((chat) => receiveMessage(chat, message));
   } catch {
     updateChat((chat) => failOutgoing(chat, outgoing.localId));
   }
+}
+
+/**
+ * Abre la conexión pidiendo lo que pasó después del último evento que llegó
+ * (`cursor`). Es la misma función para la primera vez y para volver después
+ * de un corte: lo que se perdió llega por el camino de cualquier evento, y
+ * si algo viene repetido no cambia nada.
+ */
+function openConnection() {
+  const chat = useChatStore.getState().chat;
+  if (!chat) return;
+
+  disconnect?.();
+  disconnect = chatApi.connect(handleEvent, { after_cursor: chat.cursor });
+}
+
+/** Cierra la conexión. Quién escribe y qué hace el agente dejan de valer: ya no se pueden actualizar. */
+function closeConnection() {
+  disconnect?.();
+  disconnect = null;
+  updateChat(dropActivity);
+}
+
+let watchingAppState = false;
+
+// Con la app en segundo plano, el sistema termina cortando la conexión. Se
+// la cierra a propósito al salir y se la retoma desde el cursor al volver:
+// así el corte no depende de cuánto tarde el sistema en hacerlo.
+function watchAppState() {
+  if (watchingAppState) return;
+  watchingAppState = true;
+
+  AppState.addEventListener('change', (appState) => {
+    if (appState === 'background') closeConnection();
+    // Sin señal no se reabre: de eso se ocupa `setOnline` cuando vuelva.
+    if (appState === 'active' && disconnect === null && useChatStore.getState().online) openConnection();
+  });
+}
+
+/**
+ * Manda de nuevo lo que no salió, de a uno y en el orden en que se escribió.
+ * Mandarlos todos juntos no garantiza en qué orden los recibe el servidor:
+ * el que termina primero queda primero en la conversación.
+ */
+async function resendInOrder(pending: Outgoing[]) {
+  for (const outgoing of pending) await deliver(outgoing);
 }
 
 function handleEvent(event: ServerEvent) {
@@ -239,12 +302,18 @@ async function readStoredOutbox(): Promise<Outgoing[]> {
 // La hora de un mensaje que escribo. La consigna pide tomar `now` de los
 // datos como la hora actual, así que se cuenta desde ahí, igual que el servidor.
 function currentTime(): string {
-  const ms = Date.parse(data.now) + (Date.now() - startedAt);
+  const ms = Date.parse(serverNow) + (Date.now() - startedAt);
   return new Date(ms - 3 * 3600 * 1000).toISOString().slice(0, 19) + '-03:00';
 }
 
-/** Cómo está ahora cada dato del grupo. Lo usan las dos pestañas. */
+const NO_DATOS: Record<string, Dato> = {};
+
+/**
+ * Cómo está ahora cada dato del grupo. Lo usan las dos pestañas.
+ *
+ * Los datos son una parte propia del estado: quien usa este hook se entera
+ * solo cuando un dato cambia, no cada vez que llega un mensaje.
+ */
 export function useDatos(): Record<string, Dato> {
-  const messages = useChatStore((state) => state.chat?.messages);
-  return useMemo(() => (messages ? currentDatos(messages) : {}), [messages]);
+  return useChatStore((state) => state.chat?.datos ?? NO_DATOS);
 }
