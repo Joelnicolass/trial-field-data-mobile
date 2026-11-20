@@ -22,6 +22,7 @@ import {
   markVoiceNote,
   queueOutgoing,
   receiveMessage,
+  receiveOlder,
   startDatoSave,
   TYPING_MS,
   type ChatState,
@@ -37,6 +38,10 @@ type ChatStore = {
   chat: ChatState | null;
   /** Carga el grupo y abre la conexión. Si falló, se puede llamar de nuevo para reintentar. */
   start: () => Promise<void>;
+  /** Se están trayendo mensajes anteriores. */
+  loadingOlder: boolean;
+  /** Trae la página anterior a lo que hay cargado. No hace nada si no hay más o si ya está trayendo una. */
+  loadOlder: () => Promise<void>;
   /** Avisa al servidor hasta qué mensaje leí. */
   markReadUpTo: (seq: number) => void;
   /** Manda un texto. Aparece al instante como "enviándose". */
@@ -67,6 +72,13 @@ type ChatStore = {
 // reintentar, solo avisar.
 const NOTHING_TO_RETRY = ['stale_version', 'no_changes', 'not_found'];
 
+/**
+ * Cuántos mensajes se piden por vez. Es chico a propósito: el servidor de
+ * prueba trae veinte, y con una página más grande no habría nada anterior
+ * que cargar. Con un historial real serían treinta o cincuenta.
+ */
+const PAGE_SIZE = 10;
+
 /** Dónde se guarda en el teléfono lo que no salió. */
 const OUTBOX_KEY = 'grupo:sin-enviar';
 
@@ -85,7 +97,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     set({ status: 'loading' });
     try {
-      const [snapshot, stored] = await Promise.all([chatApi.loadChat(), readStoredOutbox()]);
+      const [snapshot, stored] = await Promise.all([chatApi.loadChat({ limit: PAGE_SIZE }), readStoredOutbox()]);
       startedAt = Date.now();
       set({ status: 'ready', chat: chatFromSnapshot(snapshot, stored) });
 
@@ -93,6 +105,23 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       watchAppState();
     } catch {
       set({ status: 'error' });
+    }
+  },
+
+  loadingOlder: false,
+  loadOlder: async () => {
+    const { chat, loadingOlder } = get();
+    const oldest = chat?.messages[0];
+    if (!chat?.hasOlder || !oldest || loadingOlder) return;
+
+    set({ loadingOlder: true });
+    try {
+      const page = await chatApi.loadOlder({ before_seq: oldest.seq, limit: PAGE_SIZE });
+      updateChat((current) => receiveOlder(current, page));
+    } catch {
+      // Sin señal no hay página: se puede volver a pedir.
+    } finally {
+      set({ loadingOlder: false });
     }
   },
 

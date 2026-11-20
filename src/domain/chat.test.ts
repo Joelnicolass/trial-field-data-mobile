@@ -16,6 +16,7 @@ import {
   messageBySeq,
   queueOutgoing,
   receiveMessage,
+  receiveOlder,
   seqIndex,
   startDatoSave,
   typingMembers,
@@ -310,6 +311,66 @@ describe('el dato como parte del estado', () => {
     const state = events.reduce(receiveMessage, base);
 
     expect(state.datos).toEqual(currentDatos(state.messages));
+  });
+});
+
+describe('el historial por tramos', () => {
+  const rain: Dato = {
+    id: 'd_02',
+    structure_name: 'rainfall',
+    title: 'Lluvia',
+    status: 'saved',
+    version: 1,
+    created_by: 'u_03',
+    fields: [{ key: 'rainfall_mm', label: 'Milímetros', value: 23, type: 'number', unit: 'mm' }],
+    missing_fields: [],
+    suggestions: {},
+    opens: null,
+  };
+  const corrected: Dato = { ...rain, version: 2, fields: [{ ...rain.fields[0], value: 25 }] };
+
+  const datoMessage = message(104, { sender_id: 'agent', type: 'dato', dato: rain });
+  const change = (seq: number, version: number, after: number) =>
+    message(seq, {
+      sender_id: 'agent',
+      type: 'dato_change',
+      dato_change: { dato_id: 'd_02', action: 'edited', by: 'u_02', version, status: 'saved', changes: [{ key: 'rainfall_mm', before: null, after }] },
+    });
+
+  // Al abrir llegó solo lo último: el mensaje que creó la lluvia quedó en una página anterior.
+  const opened = chatFromSnapshot({ ...snapshot, messages: [message(113), message(114)], has_older: true, datos: [corrected] });
+
+  it('al abrir conoce los datos aunque su mensaje no esté cargado', () => {
+    expect(opened.hasOlder).toBe(true);
+    expect(opened.messages.map((m) => m.seq)).toEqual([113, 114]);
+    expect(opened.datos.d_02).toBe(corrected);
+  });
+
+  it('un cambio se aplica sobre el dato conocido si su mensaje original no está cargado', () => {
+    const changed = receiveMessage(opened, change(120, 3, 30));
+    expect(changed.datos.d_02).toMatchObject({ version: 3, fields: [{ value: 30 }] });
+  });
+
+  it('una página anterior entra arriba, en orden y sin repetidos', () => {
+    const older = receiveOlder(opened, { messages: [message(111), message(112), message(113)], has_older: true });
+
+    expect(older.messages.map((m) => m.seq)).toEqual([111, 112, 113, 114]);
+    expect(older.hasOlder).toBe(true);
+    // Los que ya estaban son los mismos objetos.
+    expect(older.messages[3]).toBe(opened.messages[1]);
+  });
+
+  it('la última página avisa que no hay más', () => {
+    expect(receiveOlder(opened, { messages: [message(112)], has_older: false }).hasOlder).toBe(false);
+  });
+
+  it('cargar el mensaje que creó un dato no cambia cómo está ahora', () => {
+    const changed = receiveMessage(opened, change(120, 3, 30));
+    // Llega la página con el dato original (23 mm) y su primera corrección (25 mm).
+    const withBase = receiveOlder(changed, { messages: [datoMessage, change(110, 2, 25)], has_older: false });
+
+    expect(withBase.datos.d_02).toMatchObject({ version: 3, fields: [{ value: 30 }] });
+    expect(withBase.datos.d_02).toEqual(currentDatos(withBase.messages).d_02);
   });
 });
 

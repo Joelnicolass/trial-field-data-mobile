@@ -106,6 +106,8 @@ Tres reglas sostienen el resto:
 - **Lo que mando lleva un identificador propio.** Aparece al instante, y la confirmación, que llega por dos caminos, se une por ese identificador. Reintentar usa el mismo, así que no duplica.
 - **Completar un dato pide elegir y después confirmar.** Es un toque más que guardar al tocar la sugerencia, pero evita guardar por error: en el campo se toca con el pulgar y a veces con guantes.
 - **Si otro completó el dato antes, no se reintenta.** Se avisa y la tarjeta muestra cómo quedó.
+- **El historial se pide por tramos.** Al abrir llega lo último, con todo lo no leído, y lo anterior se carga al subir. El servidor de prueba lo entrega todo junto, así que su adaptador lo reparte en páginas. Las páginas son de diez mensajes porque el historial de prueba tiene veinte.
+- **Los datos llegan aparte del historial.** Así Campo cuenta una lluvia aunque el mensaje que la anotó no esté cargado.
 - **La conexión se retoma desde el último evento recibido.** Al quedarse sin señal o pasar a segundo plano se cierra, y al volver se pide lo que pasó después de ese punto. Llega por el mismo camino que cualquier evento.
 - **Al volver la señal se manda de nuevo lo que no había salido,** de a uno y en el orden en que se escribió. Usa el mismo identificador, así que no duplica.
 - **Sin señal no se muestra quién escribe ni qué hace el agente.** Son avisos que ya no se pueden actualizar, y uno viejo confunde.

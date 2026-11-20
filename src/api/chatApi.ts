@@ -2,11 +2,18 @@
 // cumple puede ser el servidor de prueba de hoy o uno real mañana, y el resto
 // de la app no se entera.
 
-import type { AgentMode, ChatSnapshot, ErrorCode, Message, ServerEvent } from '@/domain/types';
+import type { AgentMode, ChatOpening, ErrorCode, HistoryPage, Message, ServerEvent } from '@/domain/types';
 
 export type ChatApi = {
-  /** El grupo como está al abrir: miembros, historial, lo que quedó sin enviar y el cursor. */
-  loadChat(): Promise<ChatSnapshot>;
+  /**
+   * El grupo como está al abrir: miembros, datos, lo que quedó sin enviar, el
+   * cursor y el tramo más reciente del historial.
+   *
+   * @param options.limit Cuántos mensajes traer. Si hay más sin leer que eso, vienen todos los no leídos.
+   */
+  loadChat(options: { limit: number }): Promise<ChatOpening>;
+  /** Los mensajes anteriores a `before_seq`, de a una página. */
+  loadOlder(input: { before_seq: number; limit: number }): Promise<HistoryPage>;
   /**
    * Abre la conexión por la que llegan los eventos. Devuelve cómo cerrarla.
    *

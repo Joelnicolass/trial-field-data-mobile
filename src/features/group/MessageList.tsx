@@ -6,6 +6,7 @@ import { space } from '@/ui/theme';
 
 import { ActivityFooter } from './ActivityFooter';
 import type { DatoModel, OpenTarget, ReplyTarget } from './model';
+import { OlderMessages } from './OlderMessages';
 import { itemType, type TimelineItem } from './timeline';
 import { TimelineRow } from './TimelineRow';
 
@@ -22,6 +23,8 @@ type Props = {
   /** La lista terminó de armarse por primera vez. Dice si abrió al final. */
   onListReady: (openedAtEnd: boolean) => void;
   onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  /** Se llegó arriba de todo: hay que traer los mensajes anteriores. */
+  onLoadOlder: () => void;
   onOpen: (target: OpenTarget) => void;
   onRetry: (localId: string) => void;
   onComplete: (dato: DatoModel, values: Record<string, string>) => void;
@@ -43,6 +46,7 @@ export const MessageList = memo(function MessageList({
   followUntil,
   onListReady,
   onScroll,
+  onLoadOlder,
   onOpen,
   onRetry,
   onComplete,
@@ -79,6 +83,11 @@ export const MessageList = memo(function MessageList({
       onLayout={() => stayAtEnd(false)}
       onScroll={onScroll}
       scrollEventThrottle={64}
+      // Al llegar arriba se trae la página anterior. Lo que se estaba leyendo
+      // queda en su lugar: los renglones nuevos entran por encima.
+      onStartReached={onLoadOlder}
+      onStartReachedThreshold={0.5}
+      ListHeaderComponent={OlderMessages}
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ paddingTop: space[16] }}
       ListFooterComponent={ActivityFooter}
