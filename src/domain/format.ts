@@ -51,6 +51,36 @@ export function formatMonth(month: string): string {
   return MONTHS[Number(month.slice(5, 7)) - 1] ?? month;
 }
 
+/**
+ * La edad a la fecha de `now`, como se dice en el campo: "26 días", "2 meses",
+ * "3 años", "1 año y 4 meses". Sin fecha de nacimiento, la raya.
+ */
+export function formatAge(birthDate: string | null, now: string): string {
+  if (!birthDate) return MISSING;
+
+  const days = dayNumber(now) - dayNumber(birthDate);
+  // Una fecha futura o mal escrita no da una edad: mejor la raya que un número inventado.
+  if (Number.isNaN(days) || days < 0) return MISSING;
+  if (days === 0) return 'Menos de un día';
+
+  const [birthYear, birthMonth, birthDay] = dateParts(birthDate);
+  const [year, month, day] = dateParts(now);
+  // Meses cumplidos: el mes en curso cuenta recién cuando llega el día en que nació.
+  const months = (year - birthYear) * 12 + (month - birthMonth) - (day < birthDay ? 1 : 0);
+  if (months === 0) return countOf(days, 'día', 'días');
+
+  const years = Math.floor(months / 12);
+  const extraMonths = months % 12;
+  if (years === 0) return countOf(months, 'mes', 'meses');
+  if (extraMonths === 0) return countOf(years, 'año', 'años');
+  return `${countOf(years, 'año', 'años')} y ${countOf(extraMonths, 'mes', 'meses')}`;
+}
+
+/** (1, "mes", "meses") → "1 mes" · (4, "mes", "meses") → "4 meses". */
+function countOf(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 export type ValueType = 'text' | 'number' | 'date';
 
 /**
@@ -66,6 +96,11 @@ export function formatValue(value: string | number | null, type: ValueType, now:
 
 /** Días desde 1970 para la fecha de un texto ISO. Solo mira año, mes y día. */
 function dayNumber(iso: string): number {
-  const [year, month, day] = iso.slice(0, 10).split('-').map(Number);
+  const [year, month, day] = dateParts(iso);
   return Date.UTC(year, month - 1, day) / 86_400_000;
+}
+
+/** "2026-04-14T07:10:00-03:00" → [2026, 4, 14]. */
+function dateParts(iso: string): number[] {
+  return iso.slice(0, 10).split('-').map(Number);
 }

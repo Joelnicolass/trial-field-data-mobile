@@ -19,7 +19,14 @@ export default function GroupScreen() {
   // Tocar una tarjeta abre Campo en lo que esa tarjeta indica. El grupo
   // queda montado detrás: al volver está como se lo dejó.
   const openInCampo = useCallback(
-    (target: OpenTarget) => router.navigate({ pathname: '/campo', params: opensToParams(target, String(Date.now())) }),
+    (target: OpenTarget) => {
+      // Una tarjeta que lleva a un animal abre su detalle, apilado sobre el grupo.
+      if (target.view === 'animal' && target.animal_id) {
+        router.push({ pathname: '/animal/[id]', params: { id: target.animal_id } });
+        return;
+      }
+      router.navigate({ pathname: '/campo', params: opensToParams(target, String(Date.now())) });
+    },
     [router],
   );
 
