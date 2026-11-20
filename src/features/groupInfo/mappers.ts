@@ -10,7 +10,7 @@ import type { ChatState } from '@/domain/chat';
 import { formatDate, formatTime } from '@/domain/format';
 import { roleLabel } from '@/features/group/roles';
 import { messageSnippet } from '@/features/group/timeline';
-import type { AgentMode, Message, MessageType } from '@/server/mock-server';
+import type { AgentMode, Message, MessageType } from '@/domain/types';
 
 import type { AgentModeModel, GroupInfoModel, MemberModel, SeenMessageModel } from './model';
 

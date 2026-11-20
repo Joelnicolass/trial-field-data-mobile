@@ -2,7 +2,7 @@
 // decisiones ya tomadas: ningún componente tiene que saber de `seq`, de
 // fechas ISO, de unidades ni de `null`. Lo arma `mappers.ts`.
 
-import type { Opens } from '@/server/mock-server';
+import type { Opens } from '@/domain/types';
 import type { TagStatus } from '@/ui/Tag';
 
 /** Adónde lleva una tarjeta en Campo. La pantalla solo lo pasa a quien navega. */

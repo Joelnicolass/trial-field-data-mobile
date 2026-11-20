@@ -2,7 +2,7 @@
 // para dibujarlo, la lluvia mes a mes (con lo que se anota en el grupo) y el
 // filtro de animales. TypeScript puro, con tests.
 
-import type { Dato } from '@/server/mock-server';
+import type { Dato } from './types';
 
 export type StockCategory = {
   category_id: number;

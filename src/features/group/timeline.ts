@@ -8,7 +8,7 @@
 
 import type { Outgoing } from '@/domain/chat';
 import { memoizeFromPrevious, memoizeLast, sameItems, shareList } from '@/domain/sharing';
-import type { MemberId, Message } from '@/server/mock-server';
+import type { MemberId, Message } from '@/domain/types';
 
 export type TimelineItem =
   | { kind: 'day'; key: string; date: string }

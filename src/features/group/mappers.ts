@@ -9,7 +9,7 @@
 
 import type { DatoSave } from '@/domain/chat';
 import { formatDate, formatDuration, formatNumber, formatQuantity, formatTime, formatValue } from '@/domain/format';
-import type { AgentStatus, Card, Dato, Field, Member, MemberId, Message, Table } from '@/server/mock-server';
+import type { AgentStatus, Card, Dato, Field, Member, MemberId, Message, Table } from '@/domain/types';
 
 import type {
   ActivityModel,

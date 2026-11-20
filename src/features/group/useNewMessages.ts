@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 
 import { countNewerThan } from '@/domain/chat';
-import type { Message } from '@/server/mock-server';
+import type { Message } from '@/domain/types';
 import { useChatStore } from '@/store/chatStore';
 
 /** A cuántos puntos del final se considera que la lista está "abajo". */
