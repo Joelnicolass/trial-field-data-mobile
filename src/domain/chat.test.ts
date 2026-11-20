@@ -10,6 +10,7 @@ import {
   failDatoSave,
   failOutgoing,
   insertMessage,
+  markVoiceNote,
   queueOutgoing,
   receiveMessage,
   startDatoSave,
@@ -177,6 +178,14 @@ describe('lo que mando yo', () => {
   it('si falla, queda en la lista para reintentar', () => {
     const failed = failOutgoing(queueOutgoing(chat, outgoing), 'l_1');
     expect(failed.outbox[0].status).toBe('failed');
+  });
+
+  it('recuerda que fue un audio aunque el servidor lo confirme como texto', () => {
+    const voice = markVoiceNote(queueOutgoing(chat, outgoing), 'l_1', 3200);
+    const confirmed = receiveMessage(voice, confirmation);
+
+    expect(confirmed.outbox).toEqual([]);
+    expect(confirmed.voiceNotes).toEqual({ l_1: 3200 });
   });
 
   it('reintentar lo vuelve a "enviándose" sin duplicarlo', () => {

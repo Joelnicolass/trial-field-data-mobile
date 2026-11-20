@@ -28,6 +28,8 @@ type Props = {
   onOpen: (target: OpenTarget) => void;
   /** `replyTo`: el mensaje al que se responde, si hay. */
   onSend: (text: string, replyTo: number | null) => void;
+  /** Manda un audio: el texto de lo que se dijo y cuánto duró. */
+  onSendVoice: (text: string, durationMs: number, replyTo: number | null) => void;
   onRetry: (localId: string) => void;
   onComplete: (dato: DatoModel, values: Record<string, string>) => void;
   onDismissNotice: () => void;
@@ -38,15 +40,32 @@ const NOTICE_MS = 7000;
 
 // La lista del grupo y el composer. Abre parada en lo primero sin leer y no
 // se mueve sola mientras se lee más arriba.
-export function GroupChatView({ model, newCount, atBottom, onScroll, onListReady, onOpen, onSend, onRetry, onComplete, onDismissNotice }: Props) {
+export function GroupChatView({
+  model,
+  newCount,
+  atBottom,
+  onScroll,
+  onListReady,
+  onOpen,
+  onSend,
+  onSendVoice,
+  onRetry,
+  onComplete,
+  onDismissNotice,
+}: Props) {
   const listRef = useRef<FlashListRef<GroupRow>>(null);
-  const composer = useComposer(model.mentionOptions, onSend);
+  const composer = useComposer(model.mentionOptions, { onSend, onSendVoice });
 
   useAutoDismiss(model.notice !== null, onDismissNotice, NOTICE_MS);
 
   /** Si la lista ya estaba al final, la deja al final. Si se leía más arriba, no la mueve. */
   function stayAtEnd(animated: boolean) {
     if (atBottom) listRef.current?.scrollToEnd({ animated });
+  }
+
+  function sendVoice(durationMs: number) {
+    composer.submitVoice(durationMs);
+    requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
   }
 
   function send() {
@@ -112,7 +131,7 @@ export function GroupChatView({ model, newCount, atBottom, onScroll, onListReady
         value={composer.draft}
         onChangeText={composer.setDraft}
         onSend={send}
-        onMic={() => {}}
+        onSendVoice={sendVoice}
         onMention={composer.startMention}
         replyingTo={composer.replyingTo?.quote}
         onCancelReply={composer.cancelReply}

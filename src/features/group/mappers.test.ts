@@ -1,4 +1,4 @@
-import { chatFromSnapshot, currentDatos, failDatoSave, queueOutgoing, startDatoSave, type ChatState } from '@/domain/chat';
+import { chatFromSnapshot, currentDatos, failDatoSave, markVoiceNote, queueOutgoing, startDatoSave, type ChatState } from '@/domain/chat';
 import type { ChatSnapshot, Dato, Message } from '@/server/mock-server';
 
 import { toGroupScreen } from './mappers';
@@ -175,6 +175,20 @@ describe('toGroupScreen', () => {
     const chat = chatFromSnapshot({ id: 'g', name: 'Grupo', agent_mode: 'detect', me: 'u_01', members: [], messages: [], unsent: [], cursor: 0 });
     expect(toGroupScreen(chat, {}, NOW, { noticeCode: 'stale_version' }).notice).toBe('Alguien lo completó antes que vos. La tarjeta muestra cómo quedó.');
     expect(toGroupScreen(chat, {}, NOW).notice).toBeNull();
+  });
+
+  it('lo que mandé como audio se ve como audio, antes y después de salir', () => {
+    const asVoice = (chat: ChatState) => markVoiceNote(chat, 'l_1', 3200);
+    const body = (rows: GroupRow[]) => rows.filter((row) => row.kind === 'person').at(-1)?.body;
+    const audio = { kind: 'audio', duration: '0:03', transcript: 'llovieron 14' };
+
+    // Todavía enviándose.
+    const pending = screenFor([], (chat) => queueOutgoing(asVoice(chat), { localId: 'l_1', text: 'llovieron 14', replyTo: null, createdAt: NOW }));
+    expect(body(pending.rows)).toEqual(audio);
+
+    // Confirmado: el servidor lo devuelve como texto, con mi identificador.
+    const sent = screenFor([message(1, { sender_id: 'u_01', text: 'llovieron 14', local_id: 'l_1' })], asVoice);
+    expect(body(sent.rows)).toEqual(audio);
   });
 
   it('sin señal avisa qué pasa con lo que se mande', () => {

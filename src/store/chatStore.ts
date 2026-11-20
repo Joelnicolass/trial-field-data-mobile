@@ -17,6 +17,7 @@ import {
   endDatoSave,
   failDatoSave,
   failOutgoing,
+  markVoiceNote,
   queueOutgoing,
   receiveMessage,
   startDatoSave,
@@ -49,6 +50,11 @@ type ChatStore = {
   markReadUpTo: (seq: number) => void;
   /** Manda un texto. Aparece al instante como "enviándose". */
   sendText: (text: string, replyTo?: number | null) => void;
+  /**
+   * Manda un audio. El servidor solo acepta texto: sale `text`, y la app
+   * recuerda que fue un audio y cuánto duró para mostrarlo así.
+   */
+  sendVoice: (text: string, durationMs: number, replyTo?: number | null) => void;
   /** Vuelve a mandar algo que falló, con su mismo identificador. */
   retry: (localId: string) => void;
   /**
@@ -103,6 +109,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   sendText: (text, replyTo = null) => {
     // El identificador se genera una sola vez por mensaje: es lo que evita duplicados.
     deliver({ localId: Crypto.randomUUID(), text, replyTo, createdAt: currentTime() });
+  },
+
+  sendVoice: (text, durationMs, replyTo = null) => {
+    const localId = Crypto.randomUUID();
+    updateChat((chat) => markVoiceNote(chat, localId, durationMs));
+    deliver({ localId, text, replyTo, createdAt: currentTime() });
   },
 
   retry: (localId) => {

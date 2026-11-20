@@ -46,6 +46,11 @@ export type ChatState = {
   outbox: Outgoing[];
   /** Los datos que estoy completando ahora: id del dato → su intento. */
   datoSaves: Record<string, DatoSave>;
+  /**
+   * Lo mío que mandé como audio: identificador del envío → duración (ms).
+   * El servidor solo acepta texto, así que esto lo recuerda la app.
+   */
+  voiceNotes: Record<string, number>;
   /** Hasta qué mensaje había leído al abrir: debajo va "mensajes sin leer". */
   lastReadSeq: number;
   /** El último mensaje que había al abrir. Lo que llega después es "nuevo", no "sin leer". */
@@ -72,6 +77,7 @@ export function chatFromSnapshot(snapshot: ChatSnapshot, stored: Outgoing[] = []
     messages,
     outbox: initialOutbox(snapshot, stored),
     datoSaves: {},
+    voiceNotes: {},
     lastReadSeq: me?.watermark ?? 0,
     loadedUpToSeq: messages[messages.length - 1]?.seq ?? 0,
     typingUntil: {},
@@ -145,6 +151,11 @@ export function dropExpiredTyping(state: ChatState, now: number): ChatState {
   const stillTyping = Object.entries(state.typingUntil).filter(([, until]) => until > now);
   if (stillTyping.length === Object.keys(state.typingUntil).length) return state;
   return { ...state, typingUntil: Object.fromEntries(stillTyping) };
+}
+
+/** Anota que ese envío fue un audio, y cuánto duró. */
+export function markVoiceNote(state: ChatState, localId: string, durationMs: number): ChatState {
+  return { ...state, voiceNotes: { ...state.voiceNotes, [localId]: durationMs } };
 }
 
 /**
