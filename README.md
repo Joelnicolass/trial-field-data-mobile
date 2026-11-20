@@ -149,9 +149,8 @@ No hay librería de gráficos ni kit de componentes: las barras de la lluvia y d
 ## Qué quedó afuera
 
 - **Un dato eliminado.** Se muestra como "Eliminado", pero el servidor no trae ningún ejemplo y no se pudo probar.
-- **Los extras opcionales:** el detalle de un animal, la info del grupo y la versión web.
 
 ## Cómo se probó
 
-- 86 tests sobre las funciones puras del dominio y de los mappers: el orden, los repetidos, el envío, los datos, la lluvia, las menciones, los audios y los formatos.
+- Tests sobre las funciones puras del dominio y de los mappers (`npm test`).
 - A mano en Expo Go, en emuladores con Android 16 y con Android 11.
