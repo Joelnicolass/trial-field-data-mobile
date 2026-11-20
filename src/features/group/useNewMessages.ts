@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 
+import { countNewerThan } from '@/domain/chat';
 import type { Message } from '@/server/mock-server';
 import { useChatStore } from '@/store/chatStore';
 
@@ -61,7 +62,7 @@ export function useNewMessages(focused: boolean) {
     [listReady, focused, lastSeq],
   );
 
-  const newCount = atBottom ? 0 : messages.filter((message) => message.seq > seenSeq && message.sender_id !== me).length;
+  const newCount = atBottom || !me ? 0 : countNewerThan(messages, seenSeq, me);
 
   return { atBottom, newCount, lastSeq, onScroll, onListReady };
 }

@@ -24,7 +24,6 @@ import {
   type ChatState,
   type Outgoing,
 } from '@/domain/chat';
-import { datosOf } from '@/domain/chatQueries';
 import data from '@/server/mock-data.json';
 import {
   completeDato,
@@ -247,9 +246,9 @@ const NO_DATOS: Record<string, Dato> = {};
 /**
  * Cómo está ahora cada dato del grupo. Lo usan las dos pestañas.
  *
- * `datosOf` recuerda su última respuesta: quien usa este hook se entera solo
- * cuando un dato cambia, no cada vez que llega un mensaje.
+ * Los datos son una parte propia del estado: quien usa este hook se entera
+ * solo cuando un dato cambia, no cada vez que llega un mensaje.
  */
 export function useDatos(): Record<string, Dato> {
-  return useChatStore((state) => (state.chat ? datosOf(state.chat.messages) : NO_DATOS));
+  return useChatStore((state) => state.chat?.datos ?? NO_DATOS);
 }

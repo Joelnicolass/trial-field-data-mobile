@@ -1,5 +1,4 @@
-import type { ChatState } from '@/domain/chat';
-import { datosOf, membersByIdOf, messagesBySeqOf } from '@/domain/chatQueries';
+import { membersByIdOf, messageBySeq, type ChatState } from '@/domain/chat';
 
 import type { RowSources } from './mappers';
 import type { TimelineItem } from './timeline';
@@ -25,18 +24,18 @@ export function rowSources(chat: ChatState, item: TimelineItem, now: string): Ro
 
   if (item.kind === 'outgoing') {
     const { outgoing } = item;
-    sources.quoted = outgoing.replyTo === null ? undefined : messagesBySeqOf(chat.messages).get(outgoing.replyTo);
+    sources.quoted = outgoing.replyTo === null ? undefined : messageBySeq(chat.messages, outgoing.replyTo);
     sources.voiceMs = chat.voiceNotes[outgoing.localId];
   }
 
   if (item.kind === 'message') {
     const { message } = item;
-    sources.quoted = message.reply_to === null ? undefined : messagesBySeqOf(chat.messages).get(message.reply_to);
+    sources.quoted = message.reply_to === null ? undefined : messageBySeq(chat.messages, message.reply_to);
     sources.voiceMs = message.local_id ? chat.voiceNotes[message.local_id] : undefined;
 
     const datoId = message.type === 'dato' ? message.dato?.id : undefined;
     if (datoId) {
-      sources.dato = datosOf(chat.messages)[datoId];
+      sources.dato = chat.datos[datoId];
       sources.save = chat.datoSaves[datoId];
     }
   }

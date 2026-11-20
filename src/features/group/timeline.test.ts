@@ -102,6 +102,48 @@ describe('timelineOf', () => {
   });
 });
 
+describe('timelineOf, cuando la lista crece', () => {
+  // Cada test usa sus propios números de lectura para no heredar la memoria de otro.
+  const grow = (messages: Message[], readUpTo: number) => timelineOf(messages, [], 'u_01', readUpTo, readUpTo);
+  const full = (messages: Message[], readUpTo: number) => buildTimeline(messages, [], { me: 'u_01', lastReadSeq: readUpTo, loadedUpToSeq: readUpTo });
+
+  it('sumando de a uno da lo mismo que armar todo de cero', () => {
+    // Cambios de día, seguidillas del mismo remitente y remitentes alternados.
+    const arrivals = [
+      message(201, '2026-11-17', 'agent'),
+      message(202, '2026-11-17', 'agent'),
+      message(203, '2026-11-18', 'agent'),
+      message(204, '2026-11-18', 'u_03'),
+      message(205, '2026-11-18', 'u_03'),
+      message(206, '2026-11-19', 'u_02'),
+    ];
+    let messages = [message(200, '2026-11-17', 'u_02')];
+    grow(messages, 200);
+
+    for (const arrival of arrivals) {
+      messages = [...messages, arrival];
+      expect(grow(messages, 200)).toEqual(full(messages, 200));
+    }
+  });
+
+  it('al sumar al final, los renglones que ya estaban son los mismos objetos', () => {
+    const first = [message(300, '2026-11-18'), message(301, '2026-11-18')];
+    const before = grow(first, 301);
+    const after = grow([...first, message(302, '2026-11-18'), message(303, '2026-11-19')], 301);
+
+    before.forEach((item, index) => expect(after[index]).toBe(item));
+    expect(after.slice(before.length).map((item) => item.kind)).toEqual(['message', 'day', 'message']);
+  });
+
+  it('si un mensaje entra en el medio, arma de nuevo y sigue dando lo mismo', () => {
+    const first = [message(400, '2026-11-18', 'u_03'), message(402, '2026-11-18', 'u_03')];
+    grow(first, 402);
+    const withLate = [first[0], message(401, '2026-11-18', 'u_04'), first[1]];
+
+    expect(grow(withLate, 402)).toEqual(full(withLate, 402));
+  });
+});
+
 describe('initialIndexOf', () => {
   it('abre en lo primero sin leer o, si no hay, en el último renglón', () => {
     const withUnread = buildTimeline([message(107, '2026-11-18'), message(108, '2026-11-18')], [], marks);
