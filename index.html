@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flujos y casos borde · Trial Mobile FieldData</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --fondo: #EEF2F6; --superficie: #FFFFFF; --inset: #F8FAFC; --divisor: #E3E8EF;
+    --tinta: #121926; --cuerpo: #364152; --secundario: #697586;
+    --navy: #243552; --sobre-navy: #E2E8F0; --teal: #0077AD; --primario: #115293;
+    --ok: #1C8300; --ok-fondo: #E8F5E9;
+    --falta: #D84315; --falta-fondo: #FBE9E7;
+    --medias: #AD8A00; --medias-fondo: #FFF9E3;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fondo); color: var(--cuerpo); font: 15px/1.5 Inter, system-ui, sans-serif; }
+  header { background: var(--navy); color: var(--sobre-navy); padding: 24px 16px; }
+  header h1 { margin: 0 0 4px; font-size: 24px; line-height: 1.2; color: #fff; }
+  header p { margin: 0; max-width: 70ch; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+  section { background: var(--superficie); border: 1px solid var(--divisor); border-radius: 8px; padding: 20px; }
+  h2 { margin: 0; font-size: 18px; line-height: 1.3; color: var(--tinta); }
+  h3 { margin: 20px 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--secundario); }
+  p { margin: 8px 0 0; }
+  .head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .n { width: 28px; height: 28px; border-radius: 50%; background: var(--navy); color: #fff; font-weight: 700; font-size: 14px;
+       display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .tag { margin-left: auto; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 5px; border: 1px solid; white-space: nowrap; }
+  .hecho { color: var(--ok); background: var(--ok-fondo); border-color: var(--ok); }
+  .falta { color: var(--falta); background: var(--falta-fondo); border-color: var(--falta); }
+  .medias { color: var(--medias); background: var(--medias-fondo); border-color: var(--medias); }
+
+  /* El flujo: pasos en fila, con una flecha entre uno y otro. */
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .step { background: var(--inset); border: 1px solid var(--divisor); border-radius: 8px; padding: 8px 12px; color: var(--tinta); font-weight: 500; }
+  .step.ask { border-color: var(--teal); color: var(--teal); background: rgba(0, 119, 173, .08); }
+  .flow > .step:not(:last-child)::after { content: "→"; margin-left: 12px; color: var(--secundario); font-weight: 400; }
+  .branch { margin-top: 8px; display: grid; gap: 8px; padding-left: 12px; border-left: 2px solid var(--divisor); }
+  .branch b { color: var(--tinta); margin-right: 4px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px 10px 0; border-top: 1px solid var(--divisor); }
+  th { font-size: 12px; color: var(--secundario); font-weight: 600; border-top: 0; padding-top: 0; }
+  td:first-child { width: 42%; color: var(--tinta); font-weight: 500; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: .9em; background: var(--inset); padding: 1px 5px; border-radius: 4px; }
+
+  .map { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 12px; }
+  .map div { background: var(--inset); border: 1px solid var(--divisor); border-radius: 8px; padding: 12px; }
+  .map b { display: block; color: var(--tinta); margin-bottom: 2px; }
+  .rules { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+  .legend { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .legend .tag { margin-left: 0; }
+
+  .tree-wrap { overflow-x: auto; margin-top: 12px; padding-bottom: 4px; }
+  .pipe { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; margin-top: 12px; }
+  .pipe div { border: 1px solid var(--divisor); border-top: 3px solid var(--teal); border-radius: 8px; padding: 12px; background: var(--inset); }
+  .pipe b { display: block; color: var(--tinta); font-size: 16px; }
+  .pipe i { display: block; font-style: normal; color: var(--secundario); font-size: 12px; margin: 2px 0 6px; }
+  .arrow { color: var(--tinta); font-weight: 600; margin-top: 12px; }
+  pre { margin: 8px 0 0; padding: 12px; background: var(--inset); border: 1px solid var(--divisor); border-radius: 8px;
+        font: 12.5px/1.5 ui-monospace, Menlo, monospace; color: var(--tinta); overflow-x: auto; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  .two h4 { margin: 12px 0 0; font-size: 14px; color: var(--tinta); }
+  @media (max-width: 640px) { td:first-child { width: 50%; } section { padding: 16px; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Flujos y casos borde</h1>
+  <p>Cómo funciona la app, paso a paso, y qué puede salir distinto en cada paso. Es una guía de lectura: no reproduce el servidor de prueba.</p>
+</header>
+
+<main>
+
+<section>
+  <h2>La idea en una pantalla</h2>
+  <p>Hay una sola fuente de verdad, el estado del grupo, y las dos pestañas leen de ahí.</p>
+  <div class="map">
+    <div><b>1. Servidor</b>Manda el historial y después eventos: mensajes, quién escribe, qué hace el agente.</div>
+    <div><b>2. Una función</b>Recibe el estado y un evento, y devuelve el estado nuevo. No guarda nada por su cuenta.</div>
+    <div><b>3. Estado</b>Mensajes ordenados, miembros, quién escribe, el agente, hasta dónde leí.</div>
+    <div><b>4. Grupo</b>Dibuja el estado.</div>
+    <div><b>5. Campo</b>Calcula sobre los datos del campo más lo anotado en el grupo.</div>
+  </div>
+  <h3>Tres criterios que resuelven casi todo</h3>
+  <ul class="rules">
+    <li><b>Mismo resultado siempre.</b> Aplicar un evento dos veces, o en otro orden, deja el estado igual.</li>
+    <li><b>Nada se copia.</b> Lo que se puede calcular (cómo está un dato, la lluvia del mes) se calcula al mostrarlo.</li>
+    <li><b>Los datos mandan sobre el diseño.</b> No se asume cuántas categorías hay ni qué campos trae un dato: se dibuja lo que venga.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Todo lo que manda el servidor</h2>
+  <p>El árbol completo de lo que la app recibe y tiene que saber dibujar. Cada hoja es una pieza de la pantalla.</p>
+  <div class="tree-wrap">
+<svg viewBox="0 0 934 648" width="934" height="648" role="img" aria-label="Árbol de lo que manda el servidor" style="display:block;font:500 12.5px Inter,system-ui,sans-serif">
+<path d="M357 54.0 C371.0 54.0,371.0 18.0,385 18.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M357 54.0 C371.0 54.0,371.0 54.0,385 54.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M357 54.0 C371.0 54.0,371.0 90.0,385 90.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M741 162.0 C755.0 162.0,755.0 126.0,769 126.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M741 162.0 C755.0 162.0,755.0 162.0,769 162.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M741 162.0 C755.0 162.0,755.0 198.0,769 198.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M741 306.0 C755.0 306.0,755.0 234.0,769 234.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M741 306.0 C755.0 306.0,755.0 270.0,769 270.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M741 306.0 C755.0 306.0,755.0 306.0,769 306.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M741 306.0 C755.0 306.0,755.0 342.0,769 342.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M741 306.0 C755.0 306.0,755.0 378.0,769 378.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M741 414.0 C755.0 414.0,755.0 414.0,769 414.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M549 288.0 C563.0 288.0,563.0 162.0,577 162.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M549 288.0 C563.0 288.0,563.0 306.0,577 306.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M549 288.0 C563.0 288.0,563.0 414.0,577 414.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M357 387.0 C371.0 387.0,371.0 288.0,385 288.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M357 387.0 C371.0 387.0,371.0 450.0,385 450.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M357 387.0 C371.0 387.0,371.0 486.0,385 486.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M357 576.0 C371.0 576.0,371.0 522.0,385 522.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M357 576.0 C371.0 576.0,371.0 558.0,385 558.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M357 576.0 C371.0 576.0,371.0 594.0,385 594.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M357 576.0 C371.0 576.0,371.0 630.0,385 630.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M165 315.0 C179.0 315.0,179.0 54.0,193 54.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M165 315.0 C179.0 315.0,179.0 387.0,193 387.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<path d="M165 315.0 C179.0 315.0,179.0 576.0,193 576.0" fill="none" stroke="#C5CED9" stroke-width="1.5"/>
+<rect x="385" y="4.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="467.0" y="22.5" text-anchor="middle" fill="#364152">Historial</text>
+<rect x="385" y="40.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="467.0" y="58.5" text-anchor="middle" fill="#364152">Miembros</text>
+<rect x="385" y="76.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="467.0" y="94.5" text-anchor="middle" fill="#364152">Lo que quedó sin enviar</text>
+<rect x="193" y="40.0" width="164" height="28" rx="8" fill="#FFFFFF" stroke="#0077AD"/>
+<text x="275.0" y="58.5" text-anchor="middle" fill="#0077AD">Carga inicial</text>
+<rect x="769" y="112.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="851.0" y="130.5" text-anchor="middle" fill="#364152">Texto</text>
+<rect x="769" y="148.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="851.0" y="166.5" text-anchor="middle" fill="#364152">Audio</text>
+<rect x="769" y="184.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="851.0" y="202.5" text-anchor="middle" fill="#364152">Foto</text>
+<rect x="577" y="148.0" width="164" height="28" rx="8" fill="#FFFFFF" stroke="#0077AD"/>
+<text x="659.0" y="166.5" text-anchor="middle" fill="#0077AD">De una persona</text>
+<rect x="769" y="220.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="851.0" y="238.5" text-anchor="middle" fill="#364152">Respuesta en texto</text>
+<rect x="769" y="256.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="851.0" y="274.5" text-anchor="middle" fill="#364152">Dato</text>
+<rect x="769" y="292.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="851.0" y="310.5" text-anchor="middle" fill="#364152">Número</text>
+<rect x="769" y="328.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="851.0" y="346.5" text-anchor="middle" fill="#364152">Tabla</text>
+<rect x="769" y="364.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="851.0" y="382.5" text-anchor="middle" fill="#364152">Cambio de un dato</text>
+<rect x="577" y="292.0" width="164" height="28" rx="8" fill="#FFFFFF" stroke="#0077AD"/>
+<text x="659.0" y="310.5" text-anchor="middle" fill="#0077AD">Del agente</text>
+<rect x="769" y="400.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="851.0" y="418.5" text-anchor="middle" fill="#364152">Aviso</text>
+<rect x="577" y="400.0" width="164" height="28" rx="8" fill="#FFFFFF" stroke="#0077AD"/>
+<text x="659.0" y="418.5" text-anchor="middle" fill="#0077AD">Del grupo</text>
+<rect x="385" y="274.0" width="164" height="28" rx="8" fill="#FFFFFF" stroke="#0077AD"/>
+<text x="467.0" y="292.5" text-anchor="middle" fill="#0077AD">Mensaje</text>
+<rect x="385" y="436.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="467.0" y="454.5" text-anchor="middle" fill="#364152">Alguien escribe</text>
+<rect x="385" y="472.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="467.0" y="490.5" text-anchor="middle" fill="#364152">Estado del agente</text>
+<rect x="193" y="373.0" width="164" height="28" rx="8" fill="#FFFFFF" stroke="#0077AD"/>
+<text x="275.0" y="391.5" text-anchor="middle" fill="#0077AD">Eventos en vivo</text>
+<rect x="385" y="508.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="467.0" y="526.5" text-anchor="middle" fill="#364152">Stock</text>
+<rect x="385" y="544.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="467.0" y="562.5" text-anchor="middle" fill="#364152">Tacto</text>
+<rect x="385" y="580.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="467.0" y="598.5" text-anchor="middle" fill="#364152">Lluvia</text>
+<rect x="385" y="616.0" width="164" height="28" rx="8" fill="#F8FAFC" stroke="#E3E8EF"/>
+<text x="467.0" y="634.5" text-anchor="middle" fill="#364152">Animales</text>
+<rect x="193" y="562.0" width="164" height="28" rx="8" fill="#FFFFFF" stroke="#0077AD"/>
+<text x="275.0" y="580.5" text-anchor="middle" fill="#0077AD">Datos del campo</text>
+<rect x="1" y="301.0" width="164" height="28" rx="8" fill="#243552" stroke="#243552"/>
+<text x="83.0" y="319.5" text-anchor="middle" fill="#FFFFFF">Servidor</text>
+</svg>
+  </div>
+</section>
+
+<section>
+  <h2>De un evento a la pantalla</h2>
+  <p>Un solo camino, siempre en la misma dirección. Cada capa hace una cosa y le pasa a la siguiente algo más simple.</p>
+  <p class="arrow">Servidor → Datos → Mappers → Pantalla</p>
+  <div class="pipe">
+    <div><b>1. Servidor</b><i>Lo que viene de afuera</i>Entrega el historial y después eventos. Sus datos vienen crudos: números sin formato, fechas ISO y <code>null</code> donde falta algo. No se modifica.</div>
+    <div><b>2. Datos</b><i>El estado, ordenado</i>Una función recibe el estado y un evento y devuelve el estado nuevo. Es la única puerta por la que cambia algo.</div>
+    <div><b>3. Mappers</b><i>De datos a "qué mostrar"</i>Funciones puras que convierten el estado en lo que la pantalla necesita: textos ya escritos, en el orden en que van.</div>
+    <div><b>4. Pantalla</b><i>Solo dibuja</i>Recibe todo listo. No sabe de fechas, unidades ni órdenes: pone cada texto en su lugar.</div>
+  </div>
+
+  <h3>Dónde vive cada capa</h3>
+  <table>
+    <tr><th>Capa</th><th>Archivos</th></tr>
+    <tr><td>Servidor</td><td><code>src/server/mock-server.ts</code> y <code>mock-data.json</code>, tal como vienen.</td></tr>
+    <tr><td>Datos</td><td><code>src/domain/chat.ts</code> aplica los eventos, <code>src/domain/campo.ts</code> hace las cuentas del campo y <code>src/store/chatStore.ts</code> guarda el estado. Este último es el único que habla con el servidor.</td></tr>
+    <tr><td>Mappers</td><td><code>src/features/group/mappers.ts</code> y <code>src/features/campo/mappers.ts</code>.</td></tr>
+    <tr><td>Lo que espera la pantalla</td><td><code>model.ts</code>, uno por pestaña: es el contrato entre el mapper y los componentes.</td></tr>
+    <tr><td>Pantalla</td><td>Un hook por pestaña (<code>useGroupScreen</code>, <code>useCampoScreen</code>) que entrega el modelo, y los componentes que lo dibujan.</td></tr>
+  </table>
+
+  <h3>Los tres eventos</h3>
+  <table>
+    <tr><th>Evento</th><th>Qué cambia en los datos</th><th>Qué se ve</th></tr>
+    <tr><td>Llegó un mensaje</td><td>Entra a la lista en su lugar. Si es de quien escribía, deja de escribir.</td><td>Un renglón nuevo; si era un cambio de dato, además cambia su tarjeta.</td></tr>
+    <tr><td>Alguien escribe</td><td>Se anota quién y hasta cuándo.</td><td>"Ramón está escribiendo…" arriba y al pie de la lista.</td></tr>
+    <tr><td>Estado del agente</td><td>Se guarda si descansa, piensa o tarda.</td><td>"El agente está pensando…" o "está tardando más de lo normal…".</td></tr>
+  </table>
+
+  <h3>Cómo se normalizan los datos</h3>
+  <table>
+    <tr><th>Cómo llega</th><th>Cómo queda guardado</th></tr>
+    <tr><td>Mensajes en el orden en que se entregan, a veces tarde y a veces repetidos</td><td>Una lista ordenada por su número de orden, sin repetidos.</td></tr>
+    <tr><td>Un dato, y más tarde mensajes que lo cambian</td><td>Los mensajes, tal cual. Cómo está el dato ahora se calcula repasándolos en orden: no hay una segunda copia.</td></tr>
+    <tr><td>"Escribiendo", sin aviso de fin</td><td>Quién escribe y hasta qué hora.</td></tr>
+    <tr><td>Mi marca de lectura</td><td>Hasta dónde había leído al abrir, que no cambia mientras leo.</td></tr>
+    <tr><td>Números, fechas y <code>null</code></td><td>Igual que llegan. El formato no se guarda: lo ponen los mappers.</td></tr>
+  </table>
+
+  <h3>Qué espera la pantalla</h3>
+  <div class="two">
+    <div>
+      <h4>Lo que llega del servidor</h4>
+<pre>{
+  type: "dato",
+  created_at: "2026-11-18T06:58:17-03:00",
+  dato: {
+    title: "Lluvia", status: "saved",
+    fields: [
+      { key: "rainfall_mm", value: 25,
+        type: "number", unit: "mm" },
+      { key: "gauge", value: "Casco",
+        type: "text" },
+      { key: "date", value: "2026-11-17",
+        type: "date" }
+    ]
+  }
+}</pre>
+    </div>
+    <div>
+      <h4>Lo que recibe la pantalla</h4>
+<pre>{
+  kind: "agent",
+  time: "06:58",
+  content: {
+    kind: "dato",
+    dato: {
+      title: "Lluvia",
+      status: { label: "Guardado", tag: "activo" },
+      headline: "25 mm",
+      fields: [
+        { label: "Pluviómetro", value: "Casco" },
+        { label: "Fecha", value: "Ayer" }
+      ],
+      missing: []
+    }
+  }
+}</pre>
+    </div>
+  </div>
+  <p>La pantalla del grupo espera cinco cosas: el título, la línea de estado, los renglones en orden, en cuál abrir y lo que pasa ahora. Cada renglón dice de qué tipo es (día, sin leer, persona, dato, número, tabla, aviso) y trae sus textos ya escritos.</p>
+
+  <h3>Reglas para que sea predecible</h3>
+  <ul class="rules">
+    <li><b>Una sola puerta.</b> Todo cambio entra por la función que aplica eventos. Las pantallas no tocan el estado.</li>
+    <li><b>Una sola dirección.</b> Enviar o completar un dato va al servidor y vuelve como evento, por el mismo camino que todo lo demás.</li>
+    <li><b>Mismo estado, misma pantalla.</b> Los mappers no guardan nada ni leen el reloj: se les pasa la hora.</li>
+    <li><b>La pantalla no calcula.</b> Si hay que decidir o formatear algo, va en un mapper.</li>
+    <li><b>Los efectos solo hablan con afuera.</b> Conectarse al abrir y avisar que leí. Ninguno dispara a otro: lo que se puede calcular se calcula al dibujar, no se guarda con un efecto.</li>
+    <li><b>Sin carreras.</b> Los eventos se aplican de a uno, y el resultado no depende del orden en que lleguen. Lo que envío lleva un identificador propio.</li>
+  </ul>
+
+  <h3>Si mañana cambia algo, qué se toca</h3>
+  <table>
+    <tr><th>Cambio</th><th>Dónde</th></tr>
+    <tr><td>Un servidor real en lugar del simulado</td><td>Solo la capa 1: el archivo que habla con el servidor.</td></tr>
+    <tr><td>Un tipo de mensaje nuevo</td><td>Un caso en el mapper y un componente que lo dibuja.</td></tr>
+    <tr><td>Un dato con campos nuevos</td><td>Nada: los campos se dibujan por su tipo.</td></tr>
+    <tr><td>Otro formato de fecha o de número</td><td>Un solo archivo de formatos.</td></tr>
+    <tr><td>Otra pantalla que usa los mismos datos</td><td>Un mapper nuevo; los datos no cambian.</td></tr>
+  </table>
+
+</section>
+
+
+<section>
+  <div class="head"><span class="n">1</span><h2>Abrir el grupo</h2></div>
+  <h3>Flujo</h3>
+  <div class="flow">
+    <span class="step">Pedir el grupo</span><span class="step">Mostrar que carga</span><span class="step">Llega el historial</span>
+    <span class="step">Calcular qué no leí</span><span class="step">Abrir en lo primero sin leer</span><span class="step">Conectarse a lo que llega</span>
+  </div>
+  <h3>Casos borde</h3>
+  <table>
+    <tr><th>Qué puede pasar</th><th>Qué hace la app</th></tr>
+    <tr><td>No hay señal al cargar</td><td>En lugar de la lista, "No pudimos cargar el contenido" con el botón Reintentar. No es un error en rojo.</td></tr>
+    <tr><td>No hay nada sin leer</td><td>Abre al final, sin separador.</td></tr>
+    <tr><td>Entre lo no leído hay una mención a mí</td><td>Se ve resaltada aunque se pase rápido por el chat.</td></tr>
+    <tr><td>Quedó algo mío sin enviar de la vez anterior</td><td>Aparece al final como "No se envió", listo para reintentar.</td></tr>
+    <tr><td>Lo que mandé yo</td><td>Nunca cuenta como sin leer.</td></tr>
+  </table>
+</section>
+
+<section>
+  <div class="head"><span class="n">2</span><h2>Recibir lo que llega</h2></div>
+  <h3>Flujo</h3>
+  <div class="flow">
+    <span class="step">Llega un evento</span><span class="step ask">¿Qué es?</span><span class="step">Aplicarlo al estado</span>
+    <span class="step">La lista se vuelve a dibujar</span><span class="step ask">¿Estoy al final?</span>
+  </div>
+  <div class="branch">
+    <div><b>Sí:</b> la lista sigue a lo nuevo y se marca como leído.</div>
+    <div><b>No:</b> la lista no se mueve y un aviso cuenta cuántos llegaron ("3 nuevos").</div>
+  </div>
+  <h3>Casos borde</h3>
+  <table>
+    <tr><th>Qué puede pasar</th><th>Qué hace la app</th></tr>
+    <tr><td>Un mensaje llega tarde: el orden de llegada no es el de la conversación</td><td>Lo ubica por su número de orden (<code>seq</code>), no al final.</td></tr>
+    <tr><td>Un mensaje llega repetido</td><td>Lo descarta por su identificador.</td></tr>
+    <tr><td>Llega un mensaje que mandé yo</td><td>Reemplaza al que ya mostré como "enviándose".</td></tr>
+    <tr><td>"Escribiendo" no avisa cuando termina</td><td>Se apaga solo a los 6 segundos, o cuando esa persona manda algo.</td></tr>
+    <tr><td>Escriben dos a la vez</td><td>"Lucía y Mariano están escribiendo…".</td></tr>
+    <tr><td>El agente tarda más de lo normal</td><td>Pasa de "está pensando" a "está tardando más de lo normal".</td></tr>
+    <tr><td>Llegan mensajes mientras leo más arriba</td><td>No pierdo el lugar. El número de "sin leer" tampoco cambia: lo que llega ahora es "nuevo".</td></tr>
+    <tr><td>Se corta la conexión</td><td>Al volver pide lo que pasó desde lo último que recibió.</td></tr>
+  </table>
+</section>
+
+<section>
+  <div class="head"><span class="n">3</span><h2>Enviar un mensaje</h2></div>
+  <h3>Flujo</h3>
+  <div class="flow">
+    <span class="step">Escribir</span><span class="step">Darle un identificador propio</span><span class="step">Mostrarlo ya, como "enviándose"</span>
+    <span class="step">Mandarlo</span><span class="step ask">¿Salió?</span>
+  </div>
+  <div class="branch">
+    <div><b>Sí:</b> llega confirmado y ocupa el lugar del que estaba "enviándose".</div>
+    <div><b>No:</b> queda "No se envió · Reintentar". Reintentar usa el mismo identificador.</div>
+  </div>
+  <h3>Casos borde</h3>
+  <table>
+    <tr><th>Qué puede pasar</th><th>Qué hace la app</th></tr>
+    <tr><td>Falla aunque haya señal</td><td>Mismo camino: queda como fallido y se puede reintentar.</td></tr>
+    <tr><td>Reintento algo que en realidad había salido</td><td>Con el mismo identificador el servidor devuelve el mismo mensaje: no se duplica.</td></tr>
+    <tr><td>La confirmación llega por dos caminos</td><td>Se unen por el identificador propio; la segunda es un repetido.</td></tr>
+    <tr><td>Cierro la app con algo sin enviar</td><td>Queda guardado en el teléfono y aparece al volver.</td></tr>
+    <tr><td>Escribo mientras llegan mensajes</td><td>El texto y el foco no se pierden.</td></tr>
+    <tr><td>Respondo a un mensaje o menciono a alguien</td><td>La cita va arriba del texto; la mención es "@" y el nombre.</td></tr>
+    <tr><td>Audio</td><td>El servidor solo acepta texto: el micrófono simula la grabación y manda una frase.</td></tr>
+  </table>
+</section>
+
+<section>
+  <div class="head"><span class="n">4</span><h2>El agente anota un dato</h2></div>
+  <h3>Flujo</h3>
+  <div class="flow">
+    <span class="step">Alguien cuenta algo</span><span class="step">El agente lo reconoce como dato</span><span class="step ask">¿Está completo?</span>
+  </div>
+  <div class="branch">
+    <div><b>Sí:</b> tarjeta "Guardado".</div>
+    <div><b>No:</b> tarjeta en naranja, "Falta un dato", con lo que propone el agente.</div>
+  </div>
+  <h3>Casos borde</h3>
+  <table>
+    <tr><th>Qué puede pasar</th><th>Qué hace la app</th></tr>
+    <tr><td>El dato trae campos que no conocemos</td><td>Cada campo se dibuja por su tipo (texto, número, fecha) y su unidad.</td></tr>
+    <tr><td>Alguien lo corrige o lo completa después</td><td>Cambia la misma tarjeta, y donde pasó queda una línea que dice quién lo cambió.</td></tr>
+    <tr><td>Llega un cambio viejo o repetido</td><td>No pisa uno más nuevo: se compara la versión.</td></tr>
+    <tr><td>Falta un campo y no hay sugerencias</td><td>Se escribe el valor directo.</td></tr>
+    <tr><td>El dato fue eliminado</td><td>La tarjeta queda marcada "Eliminado". (Sin ejemplo en los datos de prueba.)</td></tr>
+  </table>
+</section>
+
+<section>
+  <div class="head"><span class="n">5</span><h2>Completar un dato desde la tarjeta</h2></div>
+  <h3>Flujo</h3>
+  <div class="flow">
+    <span class="step">Elegir una sugerencia u "Otra"</span><span class="step">Tocar Completar</span>
+    <span class="step">Mandar el cambio con la versión que veía</span><span class="step ask">¿Lo aceptó?</span>
+  </div>
+  <div class="branch">
+    <div><b>Sí:</b> la tarjeta pasa a "Guardado" y queda la línea "Héctor completó…".</div>
+    <div><b>No:</b> depende del motivo; ver abajo.</div>
+  </div>
+  <h3>Casos borde</h3>
+  <table>
+    <tr><th>Qué puede pasar</th><th>Qué hace la app</th></tr>
+    <tr><td>Otro lo completó antes que yo</td><td>El servidor devuelve cómo quedó: se muestra eso y se avisa quién fue.</td></tr>
+    <tr><td>El valor no sirve para ese campo</td><td>Se marca el campo, con qué pasó y qué hacer.</td></tr>
+    <tr><td>Mandé lo mismo que ya tenía</td><td>No hay nada que guardar.</td></tr>
+    <tr><td>No hay señal</td><td>Lo elegido no se pierde y se puede reintentar.</td></tr>
+  </table>
+</section>
+
+<section>
+  <div class="head"><span class="n">6</span><h2>Consultarle al agente</h2></div>
+  <h3>Flujo</h3>
+  <div class="flow">
+    <span class="step">"@agente" y la pregunta</span><span class="step">"El agente está pensando…"</span>
+    <span class="step">Si tarda: "está tardando más de lo normal…"</span><span class="step">Responde</span>
+  </div>
+  <div class="branch">
+    <div><b>En palabras:</b> una tarjeta con el texto.</div>
+    <div><b>Con un número:</b> el número grande, un dato secundario y la fecha.</div>
+    <div><b>Con una tabla:</b> columnas y filas, lo que venga.</div>
+  </div>
+  <h3>Casos borde</h3>
+  <table>
+    <tr><th>Qué puede pasar</th><th>Qué hace la app</th></tr>
+    <tr><td>La tabla trae valores que faltan</td><td>Una raya en esa celda.</td></tr>
+    <tr><td>No sabe responder</td><td>Lo dice y sugiere qué se le puede preguntar.</td></tr>
+    <tr><td>La respuesta se puede abrir</td><td>Lleva a Campo: flujo 7.</td></tr>
+  </table>
+</section>
+
+<section>
+  <div class="head"><span class="n">7</span><h2>Del grupo a Campo, y volver</h2></div>
+  <h3>Flujo</h3>
+  <div class="flow">
+    <span class="step">Tocar una tarjeta o un dato</span><span class="step">Leer adónde lleva: sección y filtro</span>
+    <span class="step">Campo abre ahí, con el filtro a la vista</span><span class="step">Volver</span><span class="step">El grupo está como lo dejé</span>
+  </div>
+  <h3>Casos borde</h3>
+  <table>
+    <tr><th>Qué puede pasar</th><th>Qué hace la app</th></tr>
+    <tr><td>La tarjeta no lleva a ningún lado</td><td>No se puede tocar y no muestra el link.</td></tr>
+    <tr><td>Lleva a un animal</td><td>Su detalle o, si no está hecho, la lista con solo ese animal.</td></tr>
+    <tr><td>Se anota una lluvia en el grupo</td><td>Cuenta en el total de su mes.</td></tr>
+    <tr><td>Después la corrigen</td><td>Cuenta el valor nuevo, sin hacer nada: el total se calcula al mostrarlo.</td></tr>
+    <tr><td>La lluvia está incompleta</td><td>No cuenta hasta que alguien la complete.</td></tr>
+  </table>
+</section>
+
+<section>
+  <div class="head"><span class="n">8</span><h2>Ver los datos del campo</h2></div>
+  <h3>Flujo</h3>
+  <div class="flow">
+    <span class="step">Abrir Campo</span><span class="step ask">¿Resumen o Animales?</span>
+  </div>
+  <div class="branch">
+    <div><b>Resumen:</b> stock por categoría, último tacto y lluvia mes a mes.</div>
+    <div><b>Animales:</b> buscar por caravana y filtrar por categoría.</div>
+  </div>
+  <h3>Casos borde</h3>
+  <table>
+    <tr><th>Qué puede pasar</th><th>Qué hace la app</th></tr>
+    <tr><td>Un mes de lluvia sin registro</td><td>Se muestra "sin dato". No es cero, y se dibuja distinto de un mes en cero.</td></tr>
+    <tr><td>El mes en curso viene incompleto</td><td>Se marca como parcial y suma lo anotado en el grupo después de esa fecha.</td></tr>
+    <tr><td>Hay más de seis categorías</td><td>Las cinco más grandes y el resto junto como "Otras".</td></tr>
+    <tr><td>Falta un valor</td><td>Una raya, "Sin pesaje" o "Sin caravana". Nunca un cero inventado.</td></tr>
+    <tr><td>Nombres muy largos</td><td>Se cortan en una o dos líneas.</td></tr>
+    <tr><td>Miles de animales</td><td>La lista solo dibuja lo que se ve.</td></tr>
+    <tr><td>Animales vendidos o muertos</td><td>No cuentan en el stock.</td></tr>
+    <tr><td>La búsqueda no encuentra nada</td><td>Un mensaje que dice qué revisar.</td></tr>
+  </table>
+</section>
+
+<section>
+  <div class="head"><span class="n">9</span><h2>Quedarse sin señal</h2></div>
+  <h3>Flujo</h3>
+  <div class="flow">
+    <span class="step">Se corta</span><span class="step">Se avisa que no hay conexión</span><span class="step">Lo que escribo queda pendiente</span>
+    <span class="step">Vuelve</span><span class="step">Llega lo que me perdí</span><span class="step">Reintento lo pendiente</span>
+  </div>
+  <h3>Casos borde</h3>
+  <table>
+    <tr><th>Qué puede pasar</th><th>Qué hace la app</th></tr>
+    <tr><td>Lo que me perdí llega todo junto</td><td>Pasa por la misma función que cualquier evento: se ordena y se descartan repetidos.</td></tr>
+    <tr><td>Se corta justo después de enviar</td><td>Puede haber salido y yo no saberlo: por eso reintentar no duplica.</td></tr>
+    <tr><td>Para la demo</td><td>Un interruptor que simula el corte, a la vista.</td></tr>
+  </table>
+</section>
+
+</main>
+</body>
+</html>
