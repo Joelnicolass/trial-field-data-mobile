@@ -2,7 +2,9 @@ import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
+import { opensToParams } from '@/features/campo/target';
 import { GroupChatView } from '@/features/group/GroupChatView';
+import type { OpenTarget } from '@/features/group/model';
 import { useGroupScreen } from '@/features/group/useGroupScreen';
 import { EmptyState } from '@/ui/EmptyState';
 import { IconButton } from '@/ui/IconButton';
@@ -12,10 +14,14 @@ import { color } from '@/ui/theme';
 // El grupo del campo. Recibe del hook un modelo listo y lo dibuja.
 export default function GroupScreen() {
   const router = useRouter();
-  const { status, model, retry, newCount, onScroll, sendText, retrySend, completeDato, dismissNotice } = useGroupScreen();
+  const { status, model, retry, newCount, atBottom, onScroll, onListReady, sendText, retrySend, completeDato, dismissNotice } = useGroupScreen();
 
-  // Por ahora cualquier tarjeta lleva a Campo; abrir la sección exacta es el paso que sigue.
-  const openInCampo = useCallback(() => router.navigate('/campo'), [router]);
+  // Tocar una tarjeta abre Campo en lo que esa tarjeta indica. El grupo
+  // queda montado detrás: al volver está como se lo dejó.
+  const openInCampo = useCallback(
+    (target: OpenTarget) => router.navigate({ pathname: '/campo', params: opensToParams(target, String(Date.now())) }),
+    [router],
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: color.fondo }}>
@@ -29,7 +35,9 @@ export default function GroupScreen() {
         <GroupChatView
           model={model}
           newCount={newCount}
+          atBottom={atBottom}
           onScroll={onScroll}
+          onListReady={onListReady}
           onOpen={openInCampo}
           onSend={sendText}
           onRetry={retrySend}

@@ -1,3 +1,4 @@
+import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 
 import { useNow } from '@/hooks/useNow';
@@ -35,12 +36,14 @@ export function useGroupScreen() {
   // Se calcula al dibujar: no se guarda en otro estado.
   const model = useMemo(() => (chat ? toGroupScreen(chat, datos, now, noticeCode) : null), [chat, datos, now, noticeCode]);
 
-  const { atBottom, newCount, lastSeq, onScroll } = useNewMessages(chat);
+  // Si la pestaña del grupo está a la vista.
+  const focused = useIsFocused();
+  const { atBottom, newCount, lastSeq, onScroll, onListReady } = useNewMessages(chat, focused);
 
   // Al llegar al final, todo quedó leído: se le avisa al servidor.
   useEffect(() => {
     if (atBottom) markReadUpTo(lastSeq);
   }, [atBottom, lastSeq, markReadUpTo]);
 
-  return { status, model, retry: start, newCount, onScroll, sendText, retrySend, completeDato, dismissNotice };
+  return { status, model, retry: start, newCount, atBottom: atBottom && focused, onScroll, onListReady, sendText, retrySend, completeDato, dismissNotice };
 }

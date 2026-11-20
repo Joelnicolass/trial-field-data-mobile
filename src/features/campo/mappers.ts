@@ -10,7 +10,7 @@ import { groupStock, rainfallByMonth, rainfallTotal, type Animal, type CampoData
 import { formatDate, formatMonth, formatNumber, formatQuantity, MISSING } from '@/domain/format';
 
 import { animalTag } from './animalTag';
-import type { AnimalRowModel, CampoHeaderModel, PalpationModel, RainfallModel, StockModel } from './model';
+import type { AnimalRowModel, CampoHeaderModel, ExtraFilterChipModel, PalpationModel, RainfallModel, StockModel } from './model';
 
 export function toCampoHeader(campo: CampoData['campo']): CampoHeaderModel {
   return { title: campo.name, subtitle: `${campo.locality} · ${formatQuantity(campo.hectares, 'ha')}` };
@@ -87,6 +87,28 @@ export function toAnimalRow(animal: Animal): AnimalRowModel {
     weight: animal.last_weight_kg === null ? MISSING : formatQuantity(animal.last_weight_kg, 'kg'),
     tag: animalTag(animal),
   };
+}
+
+const REPRODUCTIVE_LABEL: Record<string, string> = { pregnant: 'Preñadas', empty: 'Vacías' };
+
+/**
+ * Los filtros con los que se llegó desde el grupo, en palabras, para que se
+ * vea por qué la lista muestra lo que muestra y se puedan sacar.
+ */
+export function toExtraFilterChips(
+  filter: { reproductiveStatus: string | null; herd: string | null; animalId: string | null },
+  animals: Animal[],
+): ExtraFilterChipModel[] {
+  const chips: ExtraFilterChipModel[] = [];
+  if (filter.reproductiveStatus) {
+    chips.push({ key: 'reproductiveStatus', label: REPRODUCTIVE_LABEL[filter.reproductiveStatus] ?? filter.reproductiveStatus });
+  }
+  if (filter.herd) chips.push({ key: 'herd', label: filter.herd });
+  if (filter.animalId) {
+    const animal = animals.find((item) => item.id === filter.animalId);
+    chips.push({ key: 'animalId', label: animal?.identifier ? `Caravana ${animal.identifier}` : 'Un solo animal' });
+  }
+  return chips;
 }
 
 export function animalCountLabel(count: number): string {

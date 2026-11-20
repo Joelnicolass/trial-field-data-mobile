@@ -78,3 +78,7 @@ export type AnimalRowModel = {
 };
 
 export type CategoryChipModel = { id: number; label: string };
+
+/** Un filtro que vino con la tarjeta del grupo. Se muestra para poder sacarlo. */
+export type ExtraFilterKey = 'reproductiveStatus' | 'herd' | 'animalId';
+export type ExtraFilterChipModel = { key: ExtraFilterKey; label: string };

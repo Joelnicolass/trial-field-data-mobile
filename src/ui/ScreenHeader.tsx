@@ -11,13 +11,15 @@ type Props = {
   titleLines?: number;
   /** Segunda línea, más chica: por ejemplo quién está escribiendo. */
   subtitle?: string;
+  /** Lo que va a la izquierda del título, por ejemplo el botón para volver. */
+  left?: ReactNode;
   /** Lo que va a la derecha: uno o más botones. */
   right?: ReactNode;
 };
 
 // Barra superior de la guía: navy con texto claro. Suma el alto de la barra
 // de estado del sistema para que el título no quede debajo.
-export function ScreenHeader({ title, titleLines = 1, subtitle, right }: Props) {
+export function ScreenHeader({ title, titleLines = 1, subtitle, left, right }: Props) {
   const insets = useSafeAreaInsets();
   return (
     <View
@@ -31,6 +33,7 @@ export function ScreenHeader({ title, titleLines = 1, subtitle, right }: Props) 
         gap: space[8],
       }}
     >
+      {left}
       <View style={{ flex: 1 }}>
         <AppText variant="h4" tone="sobreNavy" numberOfLines={titleLines}>
           {title}

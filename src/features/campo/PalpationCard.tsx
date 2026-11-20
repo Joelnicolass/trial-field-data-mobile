@@ -9,12 +9,14 @@ import type { PalpationModel } from './model';
 
 type Props = {
   palpation: PalpationModel;
+  /** Se llegó a esta tarjeta desde el grupo. */
+  highlighted?: boolean;
 };
 
 // Cómo dio el último tacto: el porcentaje de preñez y cuántas quedaron vacías.
-export function PalpationCard({ palpation }: Props) {
+export function PalpationCard({ palpation, highlighted }: Props) {
   return (
-    <Card title="Último tacto">
+    <Card title="Último tacto" highlighted={highlighted}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[20] }}>
         <ProgressRing progress={palpation.progress} tint={estado.activo.texto} size={112}>
           <AppText variant="h3" tone="tinta" tabular>
