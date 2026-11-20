@@ -6,7 +6,7 @@
 // orden, tiene que dar el mismo resultado. El servidor entrega mensajes
 // tarde y repetidos, y con esa regla ninguno de los dos casos rompe nada.
 
-import type { AgentMode, AgentStatus, ChatSnapshot, Dato, DatoChange, Member, MemberId, Message, ServerEvent } from './types';
+import type { AgentMode, AgentStatus, ChatOpening, ChatSnapshot, Dato, DatoChange, HistoryPage, Member, MemberId, Message, ServerEvent } from './types';
 
 import { memoizeLast } from './sharing';
 
@@ -42,8 +42,13 @@ export type ChatState = {
   /** Quién soy yo dentro de `members`. */
   me: MemberId;
   members: Member[];
-  /** Ordenados por `seq` y sin repetidos. */
+  /**
+   * Los mensajes cargados, ordenados por `seq` y sin repetidos. Es el tramo
+   * más reciente del historial; lo anterior se suma por páginas.
+   */
   messages: Message[];
+  /** Si hay mensajes anteriores que todavía no se cargaron. */
+  hasOlder: boolean;
   /** Lo mío que todavía no salió, en el orden en que lo escribí. */
   outbox: Outgoing[];
   /**
@@ -57,6 +62,11 @@ export type ChatState = {
    * los mensajes de ese dato, no todo el historial.
    */
   datoSeqs: Record<string, number[]>;
+  /**
+   * Los datos como vinieron al abrir. Si el mensaje que creó un dato no está
+   * cargado, sus cambios se aplican partiendo de acá.
+   */
+  datoSeeds: Record<string, Dato>;
   /** Los datos que estoy completando ahora: id del dato → su intento. */
   datoSaves: Record<string, DatoSave>;
   /**
@@ -82,18 +92,23 @@ export type ChatState = {
  *
  * @param stored Lo que la app tenía guardado sin enviar de una vez anterior.
  */
-export function chatFromSnapshot(snapshot: ChatSnapshot, stored: Outgoing[] = []): ChatState {
+export function chatFromSnapshot(snapshot: ChatSnapshot & Partial<Pick<ChatOpening, 'has_older' | 'datos'>>, stored: Outgoing[] = []): ChatState {
   const me = snapshot.members.find((member) => member.id === snapshot.me);
   const messages = sortedUnique(snapshot.messages);
+  // Los datos vienen aparte cuando el historial llega por tramos. Si no
+  // vienen, salen de los mensajes, que entonces están todos.
+  const datoSeeds = Object.fromEntries((snapshot.datos ?? []).map((dato) => [dato.id, dato]));
   return {
     name: snapshot.name,
     me: snapshot.me,
     members: snapshot.members,
     messages,
-    // Al abrir se repasa el historial una sola vez. Después, cada dato se
+    hasOlder: snapshot.has_older ?? false,
+    // Al abrir se repasa lo cargado una sola vez. Después, cada dato se
     // mantiene al día por su cuenta.
-    datos: currentDatos(messages),
+    datos: currentDatos(messages, datoSeeds),
     datoSeqs: indexDatoSeqs(messages),
+    datoSeeds,
     outbox: initialOutbox(snapshot, stored),
     datoSaves: {},
     voiceNotes: {},
@@ -323,8 +338,7 @@ function withDatoOf(state: ChatState, messages: Message[], message: Message): Pi
   if (!datoId) return state;
 
   const seqs = [...(state.datoSeqs[datoId] ?? []), message.seq].sort((a, b) => a - b);
-  const own = seqs.flatMap((seq) => messageBySeq(messages, seq) ?? []);
-  const dato = currentDatos(own)[datoId];
+  const dato = replayDato(datoId, seqs, messages, state.datoSeeds);
 
   return {
     datoSeqs: { ...state.datoSeqs, [datoId]: seqs },
@@ -333,12 +347,44 @@ function withDatoOf(state: ChatState, messages: Message[], message: Message): Pi
   };
 }
 
+/** Cómo queda un dato después de repasar sus mensajes cargados, partiendo de como vino al abrir. */
+function replayDato(datoId: string, seqs: number[], messages: Message[], seeds: Record<string, Dato>): Dato | undefined {
+  const own = seqs.flatMap((seq) => messageBySeq(messages, seq) ?? []);
+  const seed = seeds[datoId];
+  return currentDatos(own, seed ? { [datoId]: seed } : {})[datoId];
+}
+
+/**
+ * Suma una página de mensajes anteriores. Los datos que nombran esos
+ * mensajes se repasan de nuevo, ahora con más historia a la vista.
+ */
+export function receiveOlder(state: ChatState, page: HistoryPage): ChatState {
+  const messages = sortedUnique([...page.messages, ...state.messages]);
+  const datoSeqs = { ...state.datoSeqs };
+  const datos = { ...state.datos };
+
+  for (const message of page.messages) {
+    const datoId = datoIdOf(message);
+    if (!datoId) continue;
+
+    const seqs = datoSeqs[datoId] ?? [];
+    if (!seqs.includes(message.seq)) datoSeqs[datoId] = [...seqs, message.seq].sort((a, b) => a - b);
+    const dato = replayDato(datoId, datoSeqs[datoId], messages, state.datoSeeds);
+    if (dato) datos[datoId] = dato;
+  }
+
+  return { ...state, messages, datoSeqs, datos, hasOlder: page.has_older };
+}
+
 /**
  * Cómo queda cada dato después de repasar esos mensajes en orden. Se usa con
- * todo el historial al abrir y, después, solo con los mensajes de un dato.
+ * lo cargado al abrir y, después, solo con los mensajes de un dato.
+ *
+ * @param seeds De dónde se parte: datos que ya se conocen, por si el mensaje
+ *              que los creó no está entre los que se repasan.
  */
-export function currentDatos(messages: Message[]): Record<string, Dato> {
-  const datos: Record<string, Dato> = {};
+export function currentDatos(messages: Message[], seeds: Record<string, Dato> = {}): Record<string, Dato> {
+  const datos: Record<string, Dato> = { ...seeds };
 
   for (const message of messages) {
     if (message.type === 'dato' && message.dato) {

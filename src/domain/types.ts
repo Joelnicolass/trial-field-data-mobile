@@ -118,4 +118,22 @@ export type ChatSnapshot = {
   cursor: number;
 };
 
+/** Un tramo del historial, del mensaje más viejo al más nuevo. */
+export type HistoryPage = {
+  messages: Message[];
+  /** Si hay mensajes anteriores a este tramo. */
+  has_older: boolean;
+};
+
+/**
+ * El grupo al abrir. Trae el tramo más reciente del historial, no todo: lo
+ * anterior se pide por páginas. Los datos vienen aparte y completos, así
+ * Campo no depende de qué tramo del chat esté cargado.
+ */
+export type ChatOpening = Omit<ChatSnapshot, 'messages'> &
+  HistoryPage & {
+    /** Cómo está cada dato del grupo, esté o no su mensaje en este tramo. */
+    datos: Dato[];
+  };
+
 export type ErrorCode = 'no_connection' | 'stale_version' | 'no_changes' | 'invalid_value' | 'not_found';

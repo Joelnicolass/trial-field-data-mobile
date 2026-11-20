@@ -73,6 +73,7 @@ export function GroupChatView({ onOpen }: Props) {
           followUntil={followUntil}
           onListReady={chat.onListReady}
           onScroll={chat.onScroll}
+          onLoadOlder={chat.loadOlder}
           onOpen={onOpen}
           onRetry={chat.retrySend}
           onComplete={chat.completeDato}

@@ -144,6 +144,19 @@ describe('timelineOf, cuando la lista crece', () => {
   });
 });
 
+describe('timelineOf, cuando entra una página anterior', () => {
+  it('da lo mismo que armar todo de cero y conserva los renglones que ya estaban', () => {
+    const loaded = [message(510, '2026-11-18', 'u_03'), message(511, '2026-11-18', 'u_03')];
+    const before = timelineOf(loaded, [], 'u_01', 511, 511);
+    const all = [message(508, '2026-11-17', 'u_02'), message(509, '2026-11-18', 'u_03'), ...loaded];
+    const after = timelineOf(all, [], 'u_01', 511, 511);
+
+    expect(after).toEqual(buildTimeline(all, [], { me: 'u_01', lastReadSeq: 511, loadedUpToSeq: 511 }));
+    // El último mensaje no cambió: es el mismo objeto.
+    expect(after.at(-1)).toBe(before.at(-1));
+  });
+});
+
 describe('initialIndexOf', () => {
   it('abre en lo primero sin leer o, si no hay, en el último renglón', () => {
     const withUnread = buildTimeline([message(107, '2026-11-18'), message(108, '2026-11-18')], [], marks);

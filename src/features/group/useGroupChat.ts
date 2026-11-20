@@ -49,6 +49,7 @@ export function useGroupChat() {
   const online = useChatStore((state) => state.online);
 
   const markReadUpTo = useChatStore((state) => state.markReadUpTo);
+  const loadOlder = useChatStore((state) => state.loadOlder);
   const sendText = useChatStore((state) => state.sendText);
   const sendVoice = useChatStore((state) => state.sendVoice);
   const retrySend = useChatStore((state) => state.retry);
@@ -88,6 +89,7 @@ export function useGroupChat() {
     atBottom: atBottom && focused,
     onScroll,
     onListReady,
+    loadOlder,
     sendText,
     sendVoice,
     retrySend,
