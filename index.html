@@ -66,6 +66,7 @@
 
   td.group { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--secundario); font-weight: 600;
              background: var(--inset); padding: 8px 12px; width: auto; }
+  p + table { margin-top: 8px; }
   @media (max-width: 640px) { td:first-child { width: 50%; } section { padding: 16px; } }
 </style>
 </head>
@@ -285,6 +286,142 @@
   </table>
 
 </section>
+
+<section>
+  <h2>Cómo se actualiza un solo renglón</h2>
+  <p>Cuando llega algo, la app no rearma la lista: cambia el renglón que corresponde y deja el resto como estaba. Así funciona en la rama <code>refactor/performance</code>. La versión 1.0.0 armaba la pantalla entera con cada evento.</p>
+
+  <h3>Qué es un renglón</h3>
+  <p>Es cada elemento de la lista del grupo: lo que ocupa una fila de pantalla y se dibuja por separado. No es solo un mensaje.</p>
+  <table>
+    <tr><th>Clase de renglón</th><th>Qué se ve</th></tr>
+    <tr><td>Mensaje de una persona</td><td>Un globo con nombre y rol. Los míos, a la derecha.</td></tr>
+    <tr><td>Mensaje del agente</td><td>Una tarjeta a todo el ancho: un dato, un número, una tabla o un texto.</td></tr>
+    <tr><td>Aviso</td><td>Una línea centrada: "Mariano corrigió la lluvia: 23 → 25 mm".</td></tr>
+    <tr><td>Separador de día</td><td>"Hoy", "Ayer" o la fecha.</td></tr>
+    <tr><td>Separador de no leídos</td><td>"7 mensajes sin leer".</td></tr>
+    <tr><td>Mensaje mío que no salió</td><td>Mi globo, con "enviándose" o "No se envió · Reintentar".</td></tr>
+  </table>
+  <p>En el código, cada renglón pasa por tres formas, una por capa:</p>
+  <table>
+    <tr><th>Capa</th><th>Nombre en el código</th><th>Qué es</th></tr>
+    <tr><td>Datos</td><td><code>TimelineItem</code></td><td>Qué renglón es y de dónde sale: su clave y la referencia al mensaje. No dice cómo se dibuja.</td></tr>
+    <tr><td>Mappers</td><td><code>GroupRow</code></td><td>Su modelo: los textos ya escritos, la hora con formato, la cita resumida.</td></tr>
+    <tr><td>Pantalla</td><td><code>TimelineRow</code> y <code>GroupRowView</code></td><td>El componente que se suscribe a lo suyo y el que dibuja.</td></tr>
+  </table>
+
+  <h3>Cómo se identifica</h3>
+  <p>Cada renglón tiene una clave que no cambia mientras exista. Con ella la lista sabe cuál es cuál entre un dibujo y el siguiente, aunque entren renglones antes o después.</p>
+  <table>
+    <tr><th>Renglón</th><th>Su clave</th><th>De dónde sale</th></tr>
+    <tr><td>Un mensaje</td><td><code>m_108</code></td><td>El identificador que le pone el servidor.</td></tr>
+    <tr><td>Separador de día</td><td><code>day-2026-11-18</code></td><td>El día.</td></tr>
+    <tr><td>Separador de no leídos</td><td><code>unread</code></td><td>Hay uno solo.</td></tr>
+    <tr><td>Mensaje mío que no salió</td><td><code>local-b7e1…</code></td><td>El identificador que le puso la app al enviarlo.</td></tr>
+  </table>
+
+  <h3>Cómo se dibuja solo ese</h3>
+  <p>Un ejemplo: Mariano corrige una lluvia de 23 a 25 mm. Las cajas punteadas son lo que no cambia.</p>
+  <div class="tree-wrap">
+<svg viewBox="0 0 896 220" width="896" height="220" role="img" aria-label="Qué cambia cuando llega la corrección de una lluvia: un renglón nuevo y una tarjeta; el resto no se toca" style="display:block;font-family:Inter,system-ui,sans-serif">
+<text x="1" y="16" font-size="12" font-weight="600" fill="#697586" letter-spacing=".08em">EVENTO</text>
+<text x="237" y="16" font-size="12" font-weight="600" fill="#697586" letter-spacing=".08em">ESTADO</text>
+<text x="473" y="16" font-size="12" font-weight="600" fill="#697586" letter-spacing=".08em">LO QUE MIRA CADA RENGLÓN</text>
+<text x="709" y="16" font-size="12" font-weight="600" fill="#697586" letter-spacing=".08em">PANTALLA</text>
+<path d="M187 119.0 C212.0 119.0,212.0 57.0,237 57.0" fill="none" stroke="#243552" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M187 119.0 C212.0 119.0,212.0 119.0,237 119.0" fill="none" stroke="#243552" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M423 57.0 C448.0 57.0,448.0 57.0,473 57.0" fill="none" stroke="#115293" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M423 119.0 C448.0 119.0,448.0 119.0,473 119.0" fill="none" stroke="#115293" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M659 57.0 C684.0 57.0,684.0 57.0,709 57.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M659 119.0 C684.0 119.0,684.0 119.0,709 119.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M659 181.0 C684.0 181.0,684.0 181.0,709 181.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<rect x="1" y="96.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#243552" stroke-width="1.5"/>
+<text x="13" y="115.0" font-size="13" font-weight="600" fill="#121926">Llega un mensaje</text>
+<text x="13" y="131.0" font-size="12" fill="#697586">Mariano corrigió la lluvia</text>
+<rect x="237" y="34.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#115293" stroke-width="1.5"/>
+<text x="249" y="53.0" font-size="13" font-weight="600" fill="#121926">Mensajes</text>
+<text x="249" y="69.0" font-size="12" fill="#697586">se suma uno, en su lugar</text>
+<rect x="237" y="96.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#115293" stroke-width="1.5"/>
+<text x="249" y="115.0" font-size="13" font-weight="600" fill="#121926">Datos</text>
+<text x="249" y="131.0" font-size="12" fill="#697586">cambia solo la lluvia</text>
+<rect x="237" y="158.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#115293" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="249" y="177.0" font-size="13" font-weight="600" fill="#121926">Escribiendo y agente</text>
+<text x="249" y="193.0" font-size="12" fill="#697586">no cambia</text>
+<rect x="473" y="34.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#0077AD" stroke-width="1.5"/>
+<text x="485" y="53.0" font-size="13" font-weight="600" fill="#121926">Lista de claves</text>
+<text x="485" y="69.0" font-size="12" fill="#697586">una clave nueva al final</text>
+<rect x="473" y="96.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#0077AD" stroke-width="1.5"/>
+<text x="485" y="115.0" font-size="13" font-weight="600" fill="#121926">Tarjeta de la lluvia</text>
+<text x="485" y="131.0" font-size="12" fill="#697586">su dato es otro objeto</text>
+<rect x="473" y="158.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#0077AD" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="485" y="177.0" font-size="13" font-weight="600" fill="#121926">Los otros renglones</text>
+<text x="485" y="193.0" font-size="12" fill="#697586">miran lo mismo que antes</text>
+<rect x="709" y="34.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#1C8300" stroke-width="1.5"/>
+<text x="721" y="53.0" font-size="13" font-weight="600" fill="#121926">Renglón nuevo</text>
+<text x="721" y="69.0" font-size="12" fill="#697586">se arma y se dibuja</text>
+<rect x="709" y="96.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#1C8300" stroke-width="1.5"/>
+<text x="721" y="115.0" font-size="13" font-weight="600" fill="#121926">Tarjeta de la lluvia</text>
+<text x="721" y="131.0" font-size="12" fill="#697586">se redibuja con 25 mm</text>
+<rect x="709" y="158.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#1C8300" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="721" y="177.0" font-size="13" font-weight="600" fill="#121926">Todo lo demás</text>
+<text x="721" y="193.0" font-size="12" fill="#697586">React lo saltea</text>
+</svg>
+  </div>
+  <ul class="rules">
+    <li><b>El evento cambia solo su parte del estado.</b> Se suma un mensaje y cambia un dato. Quién escribe, lo pendiente y los demás datos siguen siendo los mismos objetos.</li>
+    <li><b>La lista recibe claves, no renglones armados.</b> Suma la clave nueva al final. Los elementos que ya estaban son los mismos de antes, uno por uno.</li>
+    <li><b>Cada renglón mira solo lo suyo.</b> Le pregunta al estado por su mensaje, el que cita, su dato y su guardado. Si le devuelven lo mismo que la vez anterior, no hace nada.</li>
+    <li><b>El que cambió arma su modelo de nuevo y se redibuja.</b> A los demás React los saltea, porque reciben exactamente lo mismo que antes.</li>
+  </ul>
+  <p>Qué mira cada clase de renglón:</p>
+  <table>
+    <tr><th>Renglón</th><th>Qué mira del estado</th></tr>
+    <tr><td>Globo de una persona</td><td>Su mensaje, el mensaje que cita y, si es mío, si lo mandé como audio.</td></tr>
+    <tr><td>Tarjeta de un dato</td><td>Su mensaje, cómo está ahora ese dato y si lo estoy guardando.</td></tr>
+    <tr><td>Número, tabla o aviso</td><td>Su mensaje. No cambia nunca.</td></tr>
+    <tr><td>Mensaje mío que no salió</td><td>Su envío, que cambia al pasar de "enviándose" a "falló", y el mensaje que cita.</td></tr>
+    <tr><td>Separadores</td><td>Nada que cambie.</td></tr>
+  </table>
+  <p>La barra de arriba y el pie de la lista se suscriben por su cuenta a quién escribe y a qué hace el agente. El borrador del campo de texto es estado local suyo. Ninguno de los tres pasa por la lista.</p>
+
+  <h3>Por qué es óptimo</h3>
+  <p>Porque se hace el trabajo de lo que cambió, y nada más.</p>
+  <table>
+    <tr><th>Qué pasa</th><th>Qué se recalcula</th><th>Qué se redibuja</th></tr>
+    <tr><td>Llega un mensaje</td><td>La lista suma una clave</td><td>Un renglón nuevo</td></tr>
+    <tr><td>Cambia un dato</td><td>El modelo de esa tarjeta</td><td>Esa tarjeta</td></tr>
+    <tr><td>Alguien escribe</td><td>El texto de la barra</td><td>La barra y el pie de la lista</td></tr>
+    <tr><td>Escribo una letra</td><td>Nada</td><td>El campo de texto</td></tr>
+  </table>
+  <p>Cuánto se dibujaba antes de este cambio y cuánto ahora:</p>
+  <table>
+    <tr><th>Medido en Android 11, en Expo Go</th><th>Antes</th><th>Ahora</th></tr>
+    <tr><td>Renglones dibujados en los 30 segundos del guion, sin tocar nada</td><td>187</td><td>13</td></tr>
+    <tr><td>Renglones redibujados al escribir diez letras</td><td>84</td><td>0</td></tr>
+  </table>
+  <ul class="rules">
+    <li><b>No se arma lo que no cambió.</b> Formatear una hora, resumir una cita o armar una tarjeta se hace una vez por renglón, no una vez por evento.</li>
+    <li><b>No se compara lo que no cambió.</b> Un renglón sin cambios recibe los mismos objetos, y React decide que no hay nada que hacer sin mirar adentro.</li>
+    <li><b>Escribir no toca la lista.</b> La lista está memoizada y recibe siempre las mismas funciones.</li>
+  </ul>
+
+  <h3>Por qué escala</h3>
+  <p>Porque el costo de un evento depende de lo que cambió, no del largo del historial. Lo que cuesta procesar un mensaje nuevo, medido en una computadora (un teléfono es varias veces más lento, pero la proporción es la misma):</p>
+  <table>
+    <tr><th>Mensajes en el historial</th><th>Antes</th><th>Ahora</th></tr>
+    <tr><td>500</td><td>0,56 ms</td><td>0,015 ms</td></tr>
+    <tr><td>5.000</td><td>4,3 ms</td><td>0,045 ms</td></tr>
+    <tr><td>20.000</td><td>19,2 ms</td><td>0,185 ms</td></tr>
+  </table>
+  <ul class="rules">
+    <li><b>Buscar un mensaje no recorre la lista.</b> Está ordenada por su número, así que se busca partiéndola por la mitad: con veinte mil mensajes se miran quince.</li>
+    <li><b>Sumar un mensaje al final suma un renglón.</b> Los que ya estaban ni se miran. Solo si un mensaje llega tarde y entra en el medio se arma la lista de nuevo.</li>
+    <li><b>El cambio de un dato repasa solo los mensajes de ese dato.</b> El original y sus cambios, en orden. Por eso el resultado no depende del orden en que llegaron.</li>
+    <li><b>En pantalla hay siempre una docena de renglones.</b> La lista monta lo que se ve, haya cien mensajes o veinte mil.</li>
+  </ul>
+  <p>Lo que todavía crece con el historial: la memoria, porque está todo cargado, y copiar la lista de referencias cada vez que se suma un mensaje. Las dos cosas se resuelven trayendo el historial por ventanas, que necesita un servidor que pagine.</p>
+</section>
+
 
 <section>
   <h2>Todos los eventos y cómo los interpreta la app</h2>
