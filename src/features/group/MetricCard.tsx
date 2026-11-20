@@ -11,13 +11,15 @@ type Props = {
   metric: MetricModel;
   /** Si la tarjeta lleva a los datos del campo, toda ella se puede tocar. */
   onOpen?: () => void;
+  /** Mantenerla apretada, cuando se puede tocar. */
+  onLongPress?: () => void;
 };
 
 // La respuesta del agente a una consulta: un número principal y, si hay,
 // un dato secundario. "151 vacas preñadas · 83,9 % de 180 tactadas".
-export function MetricCard({ metric, onOpen }: Props) {
+export function MetricCard({ metric, onOpen, onLongPress }: Props) {
   return (
-    <Card onPress={onOpen}>
+    <Card onPress={onOpen} onLongPress={onLongPress}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <AppText variant="caption" weight="600" tone="secundarioFuerte">
           {metric.title}

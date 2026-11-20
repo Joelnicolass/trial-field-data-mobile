@@ -1,4 +1,5 @@
-import { Pressable, View } from 'react-native';
+import type { ComponentRef, RefObject } from 'react';
+import { Pressable, View, type TextInput } from 'react-native';
 
 import { IconButton } from '@/ui/IconButton';
 import { Icon } from '@/ui/Icon';
@@ -19,10 +20,12 @@ type Props = {
   /** El mensaje al que se está respondiendo, si hay. */
   replyingTo?: QuoteModel;
   onCancelReply?: () => void;
+  /** Para darle foco al campo desde afuera: al responder o al mencionar. */
+  inputRef?: RefObject<ComponentRef<typeof TextInput> | null>;
 };
 
 // Donde se escribe. Solo dibuja: qué se manda y a quién lo decide la pantalla.
-export function Composer({ value, onChangeText, onSend, onMic, onMention, replyingTo, onCancelReply }: Props) {
+export function Composer({ value, onChangeText, onSend, onMic, onMention, replyingTo, onCancelReply, inputRef }: Props) {
   const hasText = value.trim() !== '';
 
   return (
@@ -48,7 +51,7 @@ export function Composer({ value, onChangeText, onSend, onMic, onMention, replyi
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space[4] }}>
         <IconButton icon="at-sign" accessibilityLabel="Mencionar a alguien" tint={color.secundario} onPress={onMention} />
         <View style={{ flex: 1 }}>
-          <TextField placeholder="Escribí un mensaje" value={value} onChangeText={onChangeText} multiline />
+          <TextField ref={inputRef} placeholder="Escribí un mensaje" value={value} onChangeText={onChangeText} multiline />
         </View>
         <Pressable
           accessibilityRole="button"

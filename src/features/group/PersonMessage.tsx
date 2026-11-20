@@ -13,13 +13,15 @@ import { ReplyQuote } from './ReplyQuote';
 type Props = {
   row: Extract<GroupRow, { kind: 'person' }>;
   onRetry?: () => void;
+  /** Empieza a responderle. No viene en lo mío que todavía no salió. */
+  onReply?: () => void;
 };
 
 const STATUS_ICON: Record<DeliveryStatus, IconName> = { sending: 'clock', sent: 'check', failed: 'alert-circle' };
 
 // Lo que manda una persona: texto, audio o foto, dentro de un globo.
-// Los míos van a la derecha y sin nombre.
-export function PersonMessage({ row, onRetry }: Props) {
+// Los míos van a la derecha y sin nombre. Mantener apretado el globo lo responde.
+export function PersonMessage({ row, onRetry, onReply }: Props) {
   const { isMine, mentionsMe, delivery } = row;
   const failed = delivery === 'failed';
 
@@ -31,7 +33,9 @@ export function PersonMessage({ row, onRetry }: Props) {
         </AppText>
       ) : null}
 
-      <View
+      <Pressable
+        onLongPress={onReply}
+        disabled={!onReply}
         style={{
           maxWidth: '86%',
           gap: space[8],
@@ -54,7 +58,7 @@ export function PersonMessage({ row, onRetry }: Props) {
           </AppText>
           {delivery ? <Icon name={STATUS_ICON[delivery]} size={14} tint={failed ? estado.error.texto : color.secundario} /> : null}
         </View>
-      </View>
+      </Pressable>
 
       {failed ? (
         <Pressable accessibilityRole="button" onPress={onRetry} hitSlop={12}>

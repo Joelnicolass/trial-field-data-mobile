@@ -9,6 +9,8 @@ type Props = {
   title?: string;
   /** Si viene, toda la tarjeta se puede tocar. */
   onPress?: () => void;
+  /** Qué pasa al mantenerla apretada. Solo vale en una tarjeta que se puede tocar. */
+  onLongPress?: () => void;
   /** La marca con el borde en teal: es a la que se vino a mirar. */
   highlighted?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -28,7 +30,7 @@ const BASE: ViewStyle = {
 // que lo de adentro no cambie de tamaño.
 const HIGHLIGHT: ViewStyle = { borderColor: color.teal, borderWidth: 2, padding: space[20] - 1 };
 
-export function Card({ children, title, onPress, highlighted = false, style }: Props) {
+export function Card({ children, title, onPress, onLongPress, highlighted = false, style }: Props) {
   const content = (
     <>
       {title ? (
@@ -43,7 +45,7 @@ export function Card({ children, title, onPress, highlighted = false, style }: P
   if (!onPress) return <View style={[BASE, highlighted && HIGHLIGHT, style]}>{content}</View>;
 
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [BASE, highlighted && HIGHLIGHT, style, pressed && { backgroundColor: color.inset }]}>
+    <Pressable accessibilityRole="button" onPress={onPress} onLongPress={onLongPress} style={({ pressed }) => [BASE, highlighted && HIGHLIGHT, style, pressed && { backgroundColor: color.inset }]}>
       {content}
     </Pressable>
   );

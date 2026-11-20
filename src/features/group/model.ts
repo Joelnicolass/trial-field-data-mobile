@@ -17,6 +17,19 @@ export type QuoteModel = {
   snippet: string;
 };
 
+/** Lo que hace falta para responderle a un mensaje: cuál es y cómo se lo cita. */
+export type ReplyTarget = { seq: number; quote: QuoteModel };
+
+/** Alguien a quien se puede mencionar. */
+export type MentionOption = {
+  key: string;
+  /** Lo que va después de la "@": "Mariano", "agente". */
+  name: string;
+  /** Quién es, en una línea: "Mariano Sosa · encargado". */
+  detail: string;
+  isAgent: boolean;
+};
+
 /** El contenido del globo de una persona. */
 export type PersonBody =
   | { kind: 'text'; text: string }
@@ -99,6 +112,8 @@ export type GroupRow =
       delivery: DeliveryStatus | null;
       /** Para reintentar. Solo en lo mío que todavía no salió. */
       localId: string | null;
+      /** Para responderle. `null` en lo mío que todavía no salió. */
+      reply: ReplyTarget | null;
     }
   | {
       kind: 'agent';
@@ -107,6 +122,7 @@ export type GroupRow =
       /** Falso cuando el renglón de arriba también es del agente. */
       showLabel: boolean;
       content: AgentContent;
+      reply: ReplyTarget;
     };
 
 export type ActivityModel = { text: string; slow: boolean };
@@ -122,4 +138,6 @@ export type GroupScreenModel = {
   activity: ActivityModel[];
   /** Un aviso para mostrar abajo, ya escrito. `null` si no hay. */
   notice: string | null;
+  /** A quién se puede mencionar: todos menos yo. */
+  mentionOptions: MentionOption[];
 };
