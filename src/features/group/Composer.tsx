@@ -1,5 +1,5 @@
 import type { ComponentRef, RefObject } from 'react';
-import { Pressable, View, type TextInput } from 'react-native';
+import { Platform, Pressable, View, type TextInput, type TextInputKeyPressEvent } from 'react-native';
 
 import { IconButton } from '@/ui/IconButton';
 import { Icon } from '@/ui/Icon';
@@ -65,7 +65,21 @@ export function Composer({ value, onChangeText, onSend, onSendVoice, onMention, 
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space[4] }}>
           <IconButton icon="at-sign" accessibilityLabel="Mencionar a alguien" tint={color.secundario} onPress={onMention} />
           <View style={{ flex: 1 }}>
-            <TextField ref={inputRef} placeholder="Escribí un mensaje" value={value} onChangeText={onChangeText} multiline />
+            <TextField
+              ref={inputRef}
+              placeholder="Escribí un mensaje"
+              value={value}
+              onChangeText={onChangeText}
+              multiline
+              // En la web, Enter envía y Shift + Enter baja de línea, como en cualquier chat
+              // de escritorio. En el teléfono Enter baja de línea: se envía con el botón.
+              onKeyPress={(event) => {
+                if (Platform.OS === 'web' && isPlainEnter(event)) {
+                  event.preventDefault();
+                  onSend();
+                }
+              }}
+            />
           </View>
           <Pressable
             accessibilityRole="button"
@@ -87,4 +101,11 @@ export function Composer({ value, onChangeText, onSend, onSendVoice, onMention, 
       )}
     </View>
   );
+}
+
+/** Si se apretó Enter solo, sin Shift. */
+function isPlainEnter(event: TextInputKeyPressEvent): boolean {
+  // `shiftKey` solo existe en la web: por eso no está en el tipo de React Native.
+  const { key, shiftKey } = event.nativeEvent as { key: string; shiftKey?: boolean };
+  return key === 'Enter' && !shiftKey;
 }
