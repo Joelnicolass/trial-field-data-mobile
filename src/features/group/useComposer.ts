@@ -42,7 +42,11 @@ export function useComposer(mentionOptions: MentionOption[], { onSend, onSendVoi
     inputRef,
     suggestions,
     /** Completa la mención que se venía escribiendo. */
-    pickMention: (option: MentionOption) => setDraft((text) => applyMention(text, option.name)),
+    pickMention: (option: MentionOption) => {
+      setDraft((text) => applyMention(text, option.name));
+      // En la web, tocar la sugerencia le saca el foco al campo: se lo devuelve para seguir escribiendo.
+      inputRef.current?.focus();
+    },
     /** Suma una "@" y deja el teclado listo para escribir el nombre. */
     startMention: () => {
       setDraft(startMention);

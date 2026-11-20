@@ -39,6 +39,7 @@ Otros comandos:
 
 | Comando | Qué hace |
 |---|---|
+| `npm run web` | Abre la app en el navegador |
 | `npm test` | Corre los tests del dominio y de los mappers |
 | `npm run typecheck` | Verifica los tipos |
 | `npm run lint` | Corre el lint de Expo |
@@ -126,6 +127,7 @@ Tres reglas sostienen el resto:
 - **La caravana lleva un ícono de etiqueta** delante del número.
 - **Los filtros con los que se llega desde el grupo quedan a la vista** y se sacan tocándolos.
 - **La tarjeta a la que se llega desde el grupo se resalta** con el borde en teal.
+- **En una pantalla ancha la app no se estira.** En el navegador o en una tablet queda en una columna del ancho de un teléfono, centrada: es la misma app. En el navegador, Enter envía y Shift + Enter baja de línea.
 
 ## Librerías
 
@@ -147,9 +149,8 @@ No hay librería de gráficos ni kit de componentes: las barras de la lluvia y d
 ## Qué quedó afuera
 
 - **Un dato eliminado.** Se muestra como "Eliminado", pero el servidor no trae ningún ejemplo y no se pudo probar.
-- **Los extras opcionales:** el detalle de un animal, la info del grupo y la versión web.
 
 ## Cómo se probó
 
-- 86 tests sobre las funciones puras del dominio y de los mappers: el orden, los repetidos, el envío, los datos, la lluvia, las menciones, los audios y los formatos.
+- Tests sobre las funciones puras del dominio y de los mappers (`npm test`).
 - A mano en Expo Go, en emuladores con Android 16 y con Android 11.

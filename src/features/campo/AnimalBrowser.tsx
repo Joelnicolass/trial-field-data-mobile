@@ -1,5 +1,5 @@
 import { FlashList } from '@shopify/flash-list';
-import { ScrollView, View } from 'react-native';
+import { Keyboard, ScrollView, View } from 'react-native';
 
 import { AppText } from '@/ui/AppText';
 import { Chip } from '@/ui/Chip';
@@ -13,11 +13,20 @@ import type { AnimalListModel } from './useCampoScreen';
 type Props = {
   /** La búsqueda, el filtro y los animales que quedan: todo viene del hook de la pantalla. */
   list: AnimalListModel;
+  /** Tocar un animal abre su detalle. */
+  onOpenAnimal: (id: string) => void;
 };
 
 // La lista de animales, con búsqueda por caravana y filtro por categoría.
 // Usa FlashList porque el archivo real puede traer miles de animales.
-export function AnimalBrowser({ list }: Props) {
+export function AnimalBrowser({ list, onOpenAnimal }: Props) {
+  // Si se venía de buscar, el teclado se cierra antes de abrir el detalle:
+  // si no, puede quedar abierto encima de la pantalla nueva.
+  function openAnimal(id: string) {
+    Keyboard.dismiss();
+    onOpenAnimal(id);
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <View style={{ backgroundColor: color.superficie, paddingTop: space[12], gap: space[12], borderBottomWidth: 1, borderBottomColor: color.divisor }}>
@@ -56,7 +65,7 @@ export function AnimalBrowser({ list }: Props) {
       <FlashList
         data={list.rows}
         keyExtractor={(animal) => animal.id}
-        renderItem={({ item }) => <AnimalRow animal={item} />}
+        renderItem={({ item }) => <AnimalRow animal={item} onPress={() => openAnimal(item.id)} />}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
           <EmptyState icon="search" title="No hay animales con esa caravana" description="Revisá el número o sacá el filtro de categoría." />

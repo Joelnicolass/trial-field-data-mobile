@@ -23,11 +23,13 @@ type Props = {
   target: CampoTarget;
   /** Vuelve al grupo. Solo se ofrece si se llegó desde ahí. */
   onBack: () => void;
+  /** Abre el detalle de un animal de la lista. */
+  onOpenAnimal: (id: string) => void;
 };
 
 // Los datos del campo: un resumen (stock, tacto y lluvia) y la lista de
 // animales. Recibe del hook un modelo listo y lo dibuja.
-export function CampoView({ target, onBack }: Props) {
+export function CampoView({ target, onBack, onOpenAnimal }: Props) {
   const screen = useCampoScreen(target);
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   // Para bajar hasta la tarjeta que se vino a mirar hacen falta dos cosas, que
@@ -83,7 +85,7 @@ export function CampoView({ target, onBack }: Props) {
           {focusable('rainfall', <RainfallCard rainfall={screen.rainfall} highlighted={target.focus === 'rainfall'} />)}
         </ScrollView>
       ) : (
-        <AnimalBrowser list={screen.animalList} />
+        <AnimalBrowser list={screen.animalList} onOpenAnimal={onOpenAnimal} />
       )}
     </View>
   );
