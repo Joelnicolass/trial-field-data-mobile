@@ -1,4 +1,4 @@
-import { memoizeLast, sameProps, shareList, shareRecord } from './sharing';
+import { memoizeFromPrevious, memoizeLast, sameProps, shareList, shareRecord } from './sharing';
 
 describe('memoizeLast', () => {
   it('con los mismos argumentos no vuelve a calcular', () => {
@@ -27,6 +27,32 @@ describe('memoizeLast', () => {
 
     expect(second[0]).toBe(first[0]);
     expect(second).toHaveLength(3);
+  });
+});
+
+describe('memoizeFromPrevious', () => {
+  it('le da a la función la respuesta anterior para seguir desde ahí', () => {
+    // Suma solo lo que se agregó a la lista, en vez de sumar todo de nuevo.
+    const added: number[] = [];
+    const total = memoizeFromPrevious<[number[]], number>(([list], previous) => {
+      const from = previous ? previous.args[0].length : 0;
+      const rest = list.slice(from);
+      added.push(rest.length);
+      return (previous?.result ?? 0) + rest.reduce((sum, n) => sum + n, 0);
+    });
+
+    expect(total([1, 2, 3])).toBe(6);
+    expect(total([1, 2, 3, 4])).toBe(10);
+    expect(added).toEqual([3, 1]);
+  });
+
+  it('con los mismos argumentos no llama a la función', () => {
+    const compute = jest.fn(([n]: [number]) => n * 2);
+    const doubled = memoizeFromPrevious(compute);
+
+    doubled(2);
+    doubled(2);
+    expect(compute).toHaveBeenCalledTimes(1);
   });
 });
 

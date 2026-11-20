@@ -4,6 +4,7 @@ import {
   applyEvent,
   changeAgentMode,
   chatFromSnapshot,
+  countNewerThan,
   currentDatos,
   dropActivity,
   dropExpiredTyping,
@@ -12,8 +13,10 @@ import {
   failOutgoing,
   insertMessage,
   markVoiceNote,
+  messageBySeq,
   queueOutgoing,
   receiveMessage,
+  seqIndex,
   startDatoSave,
   typingMembers,
   TYPING_MS,
@@ -60,6 +63,49 @@ describe('insertMessage', () => {
   it('descarta un mensaje repetido', () => {
     const messages = [message(114), message(115)];
     expect(insertMessage(messages, message(115))).toBe(messages);
+  });
+
+  it('descarta un repetido que no es el último', () => {
+    const messages = [message(114), message(115), message(116)];
+    expect(insertMessage(messages, message(114))).toBe(messages);
+  });
+});
+
+describe('buscar en la lista ordenada', () => {
+  // Con huecos en los números, como cuando un mensaje todavía no llegó.
+  const messages = [message(10), message(20), message(30), message(40)];
+
+  it('encuentra un mensaje por su número', () => {
+    expect(messageBySeq(messages, 30)).toBe(messages[2]);
+    expect(messageBySeq(messages, 10)).toBe(messages[0]);
+    expect(messageBySeq(messages, 40)).toBe(messages[3]);
+  });
+
+  it('no inventa uno que no está', () => {
+    expect(messageBySeq(messages, 25)).toBeUndefined();
+    expect(messageBySeq(messages, 99)).toBeUndefined();
+    expect(messageBySeq([], 1)).toBeUndefined();
+  });
+
+  it('dice dónde iría uno que falta', () => {
+    expect(seqIndex(messages, 5)).toBe(0);
+    expect(seqIndex(messages, 25)).toBe(2);
+    expect(seqIndex(messages, 99)).toBe(4);
+  });
+
+  it('cuenta lo que llegó después de un número, sin lo mío', () => {
+    const mixed = [message(10), message(20, { sender_id: 'u_01' }), message(30), message(40)];
+
+    expect(countNewerThan(mixed, 10, 'u_01')).toBe(2);
+    expect(countNewerThan(mixed, 40, 'u_01')).toBe(0);
+    expect(countNewerThan(mixed, 0, 'u_01')).toBe(3);
+  });
+});
+
+describe('al abrir', () => {
+  it('ordena el historial y saca los repetidos, venga como venga', () => {
+    const chat = chatFromSnapshot({ ...snapshot, messages: [message(114), message(112), message(113), message(112)] });
+    expect(chat.messages.map((m) => m.seq)).toEqual([112, 113, 114]);
   });
 });
 
@@ -185,6 +231,85 @@ describe('currentDatos', () => {
     const datos = currentDatos([datoMessage, correction, repeated]);
 
     expect(datos.d_02.version).toBe(2);
+  });
+});
+
+describe('el dato como parte del estado', () => {
+  const rain: Dato = {
+    id: 'd_02',
+    structure_name: 'rainfall',
+    title: 'Lluvia',
+    status: 'saved',
+    version: 1,
+    created_by: 'u_03',
+    fields: [
+      { key: 'rainfall_mm', label: 'Milímetros', value: 23, type: 'number', unit: 'mm' },
+      { key: 'gauge', label: 'Pluviómetro', value: 'Casco', type: 'text' },
+    ],
+    missing_fields: [],
+    suggestions: {},
+    opens: null,
+  };
+  const other: Dato = { ...rain, id: 'd_05' };
+
+  const change = (seq: number, version: number, key: string, after: string | number) =>
+    message(seq, {
+      sender_id: 'agent',
+      type: 'dato_change',
+      dato_change: { dato_id: 'd_02', action: 'edited', by: 'u_02', version, status: 'saved', changes: [{ key, before: null, after }] },
+    });
+
+  const base = chatFromSnapshot({
+    ...snapshot,
+    messages: [message(104, { sender_id: 'agent', type: 'dato', dato: rain }), message(105, { sender_id: 'agent', type: 'dato', dato: other })],
+  });
+
+  it('al abrir ya tiene cada dato', () => {
+    expect(base.datos.d_02).toBe(rain);
+    expect(base.datos.d_05).toBe(other);
+  });
+
+  it('un mensaje que no habla de ningún dato deja los datos como estaban', () => {
+    expect(receiveMessage(base, message(120)).datos).toBe(base.datos);
+  });
+
+  it('un cambio actualiza su dato y no toca a los demás', () => {
+    const changed = receiveMessage(base, change(120, 2, 'rainfall_mm', 25));
+
+    expect(changed.datos.d_02).toMatchObject({ version: 2, fields: [{ value: 25 }, { value: 'Casco' }] });
+    expect(changed.datos.d_05).toBe(base.datos.d_05);
+  });
+
+  it('el mismo cambio dos veces no cambia nada la segunda', () => {
+    const once = receiveMessage(base, change(120, 2, 'rainfall_mm', 25));
+    expect(receiveMessage(once, change(120, 2, 'rainfall_mm', 25))).toMatchObject({ datos: once.datos, messages: once.messages });
+  });
+
+  it('dos cambios que llegan al revés dan lo mismo que en orden', () => {
+    const first = change(120, 2, 'rainfall_mm', 25);
+    const second = change(121, 3, 'gauge', 'Loma');
+
+    const inOrder = receiveMessage(receiveMessage(base, first), second);
+    const reversed = receiveMessage(receiveMessage(base, second), first);
+
+    expect(reversed.datos.d_02).toEqual(inOrder.datos.d_02);
+    expect(reversed.datos.d_02).toMatchObject({ version: 3, fields: [{ value: 25 }, { value: 'Loma' }] });
+  });
+
+  it('un cambio que llega antes que su dato se aplica cuando el dato llega', () => {
+    const empty = chatFromSnapshot({ ...snapshot, messages: [] });
+    const early = receiveMessage(empty, change(120, 2, 'rainfall_mm', 25));
+    expect(early.datos.d_02).toBeUndefined();
+
+    const complete = receiveMessage(early, message(104, { sender_id: 'agent', type: 'dato', dato: rain }));
+    expect(complete.datos.d_02).toMatchObject({ version: 2, fields: [{ value: 25 }, { value: 'Casco' }] });
+  });
+
+  it('da lo mismo que repasar todo el historial', () => {
+    const events = [change(120, 2, 'rainfall_mm', 25), message(121), change(122, 3, 'gauge', 'Loma')];
+    const state = events.reduce(receiveMessage, base);
+
+    expect(state.datos).toEqual(currentDatos(state.messages));
   });
 });
 

@@ -29,13 +29,27 @@ export function memoizeLast<Args extends readonly unknown[], Result>(
   compute: (...args: Args) => Result,
   share: (previous: Result, next: Result) => Result = (_previous, next) => next,
 ): (...args: Args) => Result {
+  return memoizeFromPrevious<Args, Result>((args, previous) => {
+    const computed = compute(...args);
+    return previous ? share(previous.result, computed) : computed;
+  });
+}
+
+/**
+ * Como `memoizeLast`, pero la función recibe además la respuesta anterior y
+ * los argumentos con los que se había calculado. Sirve para armar la nueva a
+ * partir de la anterior en vez de empezar de cero: si a una lista de mil se
+ * le sumó uno, se suma uno.
+ */
+export function memoizeFromPrevious<Args extends readonly unknown[], Result>(
+  compute: (args: Args, previous: { args: Args; result: Result } | null) => Result,
+): (...args: Args) => Result {
   let last: { args: Args; result: Result } | null = null;
 
   return (...args: Args) => {
     if (last && sameItems(last.args, args)) return last.result;
 
-    const computed = compute(...args);
-    last = { args, result: last ? share(last.result, computed) : computed };
+    last = { args, result: compute(args, last) };
     return last.result;
   };
 }

@@ -8,6 +8,8 @@
 
 import type { AgentMode, AgentStatus, ChatSnapshot, Dato, DatoChange, Member, MemberId, Message, ServerEvent } from '@/server/mock-server';
 
+import { memoizeLast } from './sharing';
+
 /** Cuánto dura un "escribiendo" si esa persona no manda nada. El servidor no avisa cuando termina. */
 export const TYPING_MS = 6000;
 
@@ -44,6 +46,17 @@ export type ChatState = {
   messages: Message[];
   /** Lo mío que todavía no salió, en el orden en que lo escribí. */
   outbox: Outgoing[];
+  /**
+   * Cómo está ahora cada dato: id del dato → dato. Se actualiza cuando llega
+   * el dato o un cambio suyo; un mensaje cualquiera no lo toca.
+   */
+  datos: Record<string, Dato>;
+  /**
+   * Qué mensajes hablan de cada dato (el que lo creó y sus cambios): id del
+   * dato → sus `seq`, en orden. Con esto, al llegar un cambio se repasan solo
+   * los mensajes de ese dato, no todo el historial.
+   */
+  datoSeqs: Record<string, number[]>;
   /** Los datos que estoy completando ahora: id del dato → su intento. */
   datoSaves: Record<string, DatoSave>;
   /**
@@ -71,12 +84,16 @@ export type ChatState = {
  */
 export function chatFromSnapshot(snapshot: ChatSnapshot, stored: Outgoing[] = []): ChatState {
   const me = snapshot.members.find((member) => member.id === snapshot.me);
-  const messages = snapshot.messages.reduce(insertMessage, []);
+  const messages = sortedUnique(snapshot.messages);
   return {
     name: snapshot.name,
     me: snapshot.me,
     members: snapshot.members,
     messages,
+    // Al abrir se repasa el historial una sola vez. Después, cada dato se
+    // mantiene al día por su cuenta.
+    datos: currentDatos(messages),
+    datoSeqs: indexDatoSeqs(messages),
     outbox: initialOutbox(snapshot, stored),
     datoSaves: {},
     voiceNotes: {},
@@ -109,9 +126,15 @@ export function applyEvent(state: ChatState, event: ServerEvent, now: number): C
  * función se llama en los dos, y la segunda vez no cambia nada.
  */
 export function receiveMessage(state: ChatState, message: Message): ChatState {
+  const messages = insertMessage(state.messages, message);
+  // Un mensaje repetido deja la lista igual, y entonces tampoco toca su dato.
+  const { datos, datoSeqs } = messages === state.messages ? state : withDatoOf(state, messages, message);
+
   return {
     ...state,
-    messages: insertMessage(state.messages, message),
+    messages,
+    datos,
+    datoSeqs,
     outbox: message.local_id ? state.outbox.filter((item) => item.localId !== message.local_id) : state.outbox,
     // Si mandó algo, dejó de escribir.
     typingUntil: omit(state.typingUntil, message.sender_id),
@@ -184,14 +207,59 @@ export function changeAgentMode(state: ChatState, mode: AgentMode): ChatState {
  * - Tarde (`seq` menor que el último): va en el medio, no al final.
  */
 export function insertMessage(messages: Message[], message: Message): Message[] {
-  if (messages.some((existing) => existing.message_id === message.message_id)) return messages;
+  // Lo normal: llega el más nuevo y va al final.
+  const last = messages[messages.length - 1];
+  if (!last || message.seq > last.seq) return [...messages, message];
 
-  // Casi siempre va al final: se busca el lugar desde atrás.
-  let index = messages.length;
-  while (index > 0 && messages[index - 1].seq > message.seq) index--;
+  const index = seqIndex(messages, message.seq);
+  // El `seq` identifica al mensaje: si ya hay uno con ese número, es un repetido.
+  if (messages[index]?.seq === message.seq) return messages;
 
   return [...messages.slice(0, index), message, ...messages.slice(index)];
 }
+
+/**
+ * En qué lugar de la lista está el mensaje con ese `seq` o, si no está, dónde
+ * iría. La lista está ordenada, así que se busca partiéndola por la mitad
+ * cada vez: con veinte mil mensajes se miran quince, no veinte mil.
+ */
+export function seqIndex(messages: Message[], seq: number): number {
+  let low = 0;
+  let high = messages.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (messages[middle].seq < seq) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+/** El mensaje con ese `seq`, por ejemplo el que cita una respuesta. */
+export function messageBySeq(messages: Message[], seq: number): Message | undefined {
+  const found = messages[seqIndex(messages, seq)];
+  return found?.seq === seq ? found : undefined;
+}
+
+/**
+ * Cuántos mensajes de otros hay después de `seq`. Los nuevos están al final:
+ * se cuenta desde atrás y se corta al llegar a lo ya visto.
+ */
+export function countNewerThan(messages: Message[], seq: number, me: MemberId): number {
+  let count = 0;
+  for (let index = messages.length - 1; index >= 0 && messages[index].seq > seq; index--) {
+    if (messages[index].sender_id !== me) count++;
+  }
+  return count;
+}
+
+/** El historial como llega al abrir, ordenado por `seq` y sin repetidos. */
+function sortedUnique(messages: Message[]): Message[] {
+  const sorted = [...messages].sort((a, b) => a.seq - b.seq);
+  return sorted.filter((message, index) => index === 0 || message.seq !== sorted[index - 1].seq);
+}
+
+/** Para encontrar a un miembro por su id. Recuerda la respuesta mientras la lista de miembros sea la misma. */
+export const membersByIdOf = memoizeLast((members: Member[]) => new Map(members.map((member) => [member.id, member])));
 
 /** Las personas que están escribiendo, en el orden de `members`. */
 export function typingMembers(state: ChatState): Member[] {
@@ -224,6 +292,50 @@ export function endDatoSave(state: ChatState, datoId: string): ChatState {
  * `dato_change`. No se guarda aparte: se calcula repasando los mensajes en
  * orden. Así la tarjeta original siempre muestra el valor actual, y no hay
  * una segunda copia que pueda quedar desactualizada.
+ */
+/** De qué dato habla un mensaje: del que crea o del que cambia. `undefined` si no habla de ninguno. */
+function datoIdOf(message: Message): string | undefined {
+  if (message.type === 'dato') return message.dato?.id;
+  if (message.type === 'dato_change') return message.dato_change?.dato_id;
+  return undefined;
+}
+
+/** Qué mensajes hablan de cada dato: id del dato → sus `seq`, en orden. */
+function indexDatoSeqs(messages: Message[]): Record<string, number[]> {
+  const seqs: Record<string, number[]> = {};
+  for (const message of messages) {
+    const datoId = datoIdOf(message);
+    if (datoId) (seqs[datoId] ??= []).push(message.seq);
+  }
+  return seqs;
+}
+
+/**
+ * Si el mensaje trae un dato o un cambio, deja ese dato al día. Los demás
+ * datos no se tocan: siguen siendo los mismos objetos.
+ *
+ * No aplica el cambio "encima" del dato que había: repasa los mensajes de
+ * ese dato en orden, con la misma regla de siempre (`currentDatos`). Así el
+ * resultado no depende del orden en que llegaron, y son pocos mensajes.
+ */
+function withDatoOf(state: ChatState, messages: Message[], message: Message): Pick<ChatState, 'datos' | 'datoSeqs'> {
+  const datoId = datoIdOf(message);
+  if (!datoId) return state;
+
+  const seqs = [...(state.datoSeqs[datoId] ?? []), message.seq].sort((a, b) => a - b);
+  const own = seqs.flatMap((seq) => messageBySeq(messages, seq) ?? []);
+  const dato = currentDatos(own)[datoId];
+
+  return {
+    datoSeqs: { ...state.datoSeqs, [datoId]: seqs },
+    // Un cambio que llega antes que su dato todavía no tiene sobre qué aplicarse.
+    datos: dato ? { ...state.datos, [datoId]: dato } : state.datos,
+  };
+}
+
+/**
+ * Cómo queda cada dato después de repasar esos mensajes en orden. Se usa con
+ * todo el historial al abrir y, después, solo con los mensajes de un dato.
  */
 export function currentDatos(messages: Message[]): Record<string, Dato> {
   const datos: Record<string, Dato> = {};
