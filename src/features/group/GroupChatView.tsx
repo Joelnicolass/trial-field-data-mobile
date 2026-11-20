@@ -3,12 +3,14 @@ import { useRef, useState } from 'react';
 import { View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 
+import { useAutoDismiss } from '@/hooks/useAutoDismiss';
+import { ErrorNotice } from '@/ui/ErrorNotice';
 import { space } from '@/ui/theme';
 
 import { ActivityLine } from './ActivityLine';
 import { Composer } from './Composer';
 import { GroupRowView } from './GroupRowView';
-import type { GroupRow, GroupScreenModel, OpenTarget } from './model';
+import type { DatoModel, GroupRow, GroupScreenModel, OpenTarget } from './model';
 import { NewMessagesPill } from './NewMessagesPill';
 
 type Props = {
@@ -19,13 +21,20 @@ type Props = {
   onOpen: (target: OpenTarget) => void;
   onSend: (text: string) => void;
   onRetry: (localId: string) => void;
+  onComplete: (dato: DatoModel, values: Record<string, string>) => void;
+  onDismissNotice: () => void;
 };
+
+/** Cuánto dura un aviso abajo si nadie lo cierra, según la guía. */
+const NOTICE_MS = 7000;
 
 // La lista del grupo y el composer. Abre parada en lo primero sin leer y no
 // se mueve sola mientras se lee más arriba.
-export function GroupChatView({ model, newCount, onScroll, onOpen, onSend, onRetry }: Props) {
+export function GroupChatView({ model, newCount, onScroll, onOpen, onSend, onRetry, onComplete, onDismissNotice }: Props) {
   const listRef = useRef<FlashListRef<GroupRow>>(null);
   const [draft, setDraft] = useState('');
+
+  useAutoDismiss(model.notice !== null, onDismissNotice, NOTICE_MS);
 
   function send() {
     const text = draft.trim();
@@ -46,7 +55,7 @@ export function GroupChatView({ model, newCount, onScroll, onOpen, onSend, onRet
           data={model.rows}
           keyExtractor={(row) => row.key}
           getItemType={(row) => row.kind}
-          renderItem={({ item }) => <GroupRowView row={item} onOpen={onOpen} onRetry={onRetry} />}
+          renderItem={({ item }) => <GroupRowView row={item} onOpen={onOpen} onRetry={onRetry} onComplete={onComplete} />}
           initialScrollIndex={model.initialIndex}
           // Si está cerca del final, sigue a lo que llega. Si no, no se mueve.
           maintainVisibleContentPosition={{ autoscrollToBottomThreshold: 0.2 }}
@@ -63,7 +72,13 @@ export function GroupChatView({ model, newCount, onScroll, onOpen, onSend, onRet
           }
         />
 
-        {newCount > 0 ? (
+        {model.notice ? (
+          <View style={{ position: 'absolute', left: space[16], right: space[16], bottom: space[12] }}>
+            <ErrorNotice message={model.notice} onClose={onDismissNotice} />
+          </View>
+        ) : null}
+
+        {newCount > 0 && !model.notice ? (
           <View style={{ position: 'absolute', right: space[16], bottom: space[12] }}>
             <NewMessagesPill count={newCount} onPress={() => listRef.current?.scrollToEnd({ animated: true })} />
           </View>

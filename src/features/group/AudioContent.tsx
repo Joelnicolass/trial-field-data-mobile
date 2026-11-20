@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRecyclingState } from '@shopify/flash-list';
 import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/ui/AppText';
@@ -18,7 +18,9 @@ const BARS = [8, 14, 20, 12, 24, 16, 10, 22, 14, 18, 8, 16, 24, 12, 18, 10, 20, 
 // Un audio: botón, dibujo de la onda, duración y, abajo, lo que se dijo.
 // En el campo muchas veces no se puede escuchar: el texto es lo que se lee.
 export function AudioContent({ duration, transcript }: Props) {
-  const [expanded, setExpanded] = useState(false);
+  // La lista reutiliza los renglones al desplazarse: esto vuelve a "cerrado"
+  // cuando el renglón pasa a mostrar otro audio.
+  const [expanded, setExpanded] = useRecyclingState(false, [transcript]);
 
   return (
     <View style={{ gap: space[8] }}>

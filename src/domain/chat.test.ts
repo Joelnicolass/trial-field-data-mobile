@@ -1,6 +1,20 @@
 import type { ChatSnapshot, Dato, Message } from '@/server/mock-server';
 
-import { applyEvent, chatFromSnapshot, currentDatos, dropExpiredTyping, failOutgoing, insertMessage, queueOutgoing, receiveMessage, typingMembers, TYPING_MS } from './chat';
+import {
+  applyEvent,
+  chatFromSnapshot,
+  currentDatos,
+  dropExpiredTyping,
+  endDatoSave,
+  failDatoSave,
+  failOutgoing,
+  insertMessage,
+  queueOutgoing,
+  receiveMessage,
+  startDatoSave,
+  typingMembers,
+  TYPING_MS,
+} from './chat';
 
 function message(seq: number, overrides: Partial<Message> = {}): Message {
   return {
@@ -182,5 +196,23 @@ describe('lo que mando yo', () => {
       ['l_viejo', 'failed'],
       ['l_1', 'failed'],
     ]);
+  });
+});
+
+describe('completar un dato', () => {
+  const chat = chatFromSnapshot(snapshot);
+  const save = { localId: 'l_9', values: { vaccine: 'Querato' } };
+
+  it('queda "guardando" con lo que se eligió', () => {
+    expect(startDatoSave(chat, 'd_03', save).datoSaves.d_03).toEqual({ ...save, status: 'saving', errorCode: null, errorField: null });
+  });
+
+  it('si falla, lo elegido no se pierde y se sabe por qué', () => {
+    const failed = failDatoSave(startDatoSave(chat, 'd_03', save), 'd_03', 'invalid_value', 'vaccine');
+    expect(failed.datoSaves.d_03).toMatchObject({ values: { vaccine: 'Querato' }, status: 'failed', errorCode: 'invalid_value', errorField: 'vaccine' });
+  });
+
+  it('al terminar, el intento se borra', () => {
+    expect(endDatoSave(startDatoSave(chat, 'd_03', save), 'd_03').datoSaves).toEqual({});
   });
 });

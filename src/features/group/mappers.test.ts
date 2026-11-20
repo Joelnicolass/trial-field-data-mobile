@@ -1,4 +1,4 @@
-import { chatFromSnapshot, currentDatos } from '@/domain/chat';
+import { chatFromSnapshot, currentDatos, failDatoSave, startDatoSave } from '@/domain/chat';
 import type { ChatSnapshot, Dato, Message } from '@/server/mock-server';
 
 import { toGroupScreen } from './mappers';
@@ -135,6 +135,42 @@ describe('toGroupScreen', () => {
 
     expect(rowOf(rows, 'agent')?.content).toMatchObject({ kind: 'dato', dato: { headline: '25 mm', version: 2, intro: null } });
     expect(rowOf(rows, 'line')).toMatchObject({ text: 'Mariano corrigió la lluvia: 23 → 25 mm', isChange: true });
+  });
+
+  it('mientras se guarda lo marca, y si falla dice qué pasó sin perder el estado', () => {
+    const chat = chatFromSnapshot({
+      id: 'g_01',
+      name: 'Grupo',
+      agent_mode: 'detect',
+      me: 'u_01',
+      members: [
+        { id: 'u_01', name: 'Héctor Etcheverry', short_name: 'Héctor', role: 'owner', is_agent: false, watermark: 999 },
+        { id: 'agent', name: 'Agente', short_name: 'agente', role: 'agent', is_agent: true, watermark: 0 },
+      ],
+      messages: [message(1, { sender_id: 'agent', type: 'dato', text: 'Me falta qué vacuna usaste.', dato: vaccination })],
+      unsent: [],
+      cursor: 0,
+    });
+    const save = { localId: 'l_9', values: { vaccine: 'x' } };
+    const datoOf = (state: typeof chat) => {
+      const content = rowOf(toGroupScreen(state, currentDatos(state.messages), NOW).rows, 'agent')?.content;
+      return content?.kind === 'dato' ? content.dato : undefined;
+    };
+
+    expect(datoOf(startDatoSave(chat, 'd_03', save))).toMatchObject({ saving: true, error: null });
+    expect(datoOf(failDatoSave(startDatoSave(chat, 'd_03', save), 'd_03', 'no_connection'))).toMatchObject({
+      saving: false,
+      error: 'No se pudo guardar. Revisá tu conexión y probá de nuevo.',
+    });
+    // Un valor rechazado se marca en su campo, no en la tarjeta entera.
+    const rejected = datoOf(failDatoSave(startDatoSave(chat, 'd_03', save), 'd_03', 'invalid_value', 'vaccine'));
+    expect(rejected).toMatchObject({ error: null, missing: [{ key: 'vaccine', error: 'Ese valor no sirve. Revisalo y probá de nuevo.' }] });
+  });
+
+  it('avisa cuando otro completó el dato antes', () => {
+    const chat = chatFromSnapshot({ id: 'g', name: 'Grupo', agent_mode: 'detect', me: 'u_01', members: [], messages: [], unsent: [], cursor: 0 });
+    expect(toGroupScreen(chat, {}, NOW, 'stale_version').notice).toBe('Alguien lo completó antes que vos. La tarjeta muestra cómo quedó.');
+    expect(toGroupScreen(chat, {}, NOW).notice).toBeNull();
   });
 
   it('en una tabla, lo que falta sale como una raya', () => {

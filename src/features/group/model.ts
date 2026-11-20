@@ -32,6 +32,8 @@ export type MissingFieldModel = {
   /** Para abrir el teclado de números. */
   numeric: boolean;
   placeholder: string;
+  /** Qué pasó con el valor que se mandó, si el servidor lo rechazó. */
+  error: string | null;
 };
 
 export type DatoModel = {
@@ -47,6 +49,10 @@ export type DatoModel = {
   headline: string | null;
   fields: FieldModel[];
   missing: MissingFieldModel[];
+  /** Se está guardando lo que se completó. */
+  saving: boolean;
+  /** Por qué no se guardó, ya escrito. `null` si no hubo error. */
+  error: string | null;
   /** Adónde lleva en Campo, si lleva a algún lado. */
   opens: OpenTarget | null;
 };
@@ -114,4 +120,6 @@ export type GroupScreenModel = {
   initialIndex: number;
   /** Lo que pasa ahora, al pie de la lista. */
   activity: ActivityModel[];
+  /** Un aviso para mostrar abajo, ya escrito. `null` si no hay. */
+  notice: string | null;
 };

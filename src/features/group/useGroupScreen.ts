@@ -21,6 +21,9 @@ export function useGroupScreen() {
   const markReadUpTo = useChatStore((state) => state.markReadUpTo);
   const sendText = useChatStore((state) => state.sendText);
   const retrySend = useChatStore((state) => state.retry);
+  const completeDato = useChatStore((state) => state.completeDato);
+  const noticeCode = useChatStore((state) => state.noticeCode);
+  const dismissNotice = useChatStore((state) => state.dismissNotice);
   const datos = useDatos();
   const now = useNow();
 
@@ -30,7 +33,7 @@ export function useGroupScreen() {
   }, [start]);
 
   // Se calcula al dibujar: no se guarda en otro estado.
-  const model = useMemo(() => (chat ? toGroupScreen(chat, datos, now) : null), [chat, datos, now]);
+  const model = useMemo(() => (chat ? toGroupScreen(chat, datos, now, noticeCode) : null), [chat, datos, now, noticeCode]);
 
   const { atBottom, newCount, lastSeq, onScroll } = useNewMessages(chat);
 
@@ -39,5 +42,5 @@ export function useGroupScreen() {
     if (atBottom) markReadUpTo(lastSeq);
   }, [atBottom, lastSeq, markReadUpTo]);
 
-  return { status, model, retry: start, newCount, onScroll, sendText, retrySend };
+  return { status, model, retry: start, newCount, onScroll, sendText, retrySend, completeDato, dismissNotice };
 }

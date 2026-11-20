@@ -1,16 +1,18 @@
-import { useState } from 'react';
+import { useRecyclingState } from '@shopify/flash-list';
 import { View } from 'react-native';
 
 import { AppText } from '@/ui/AppText';
 import { Chip } from '@/ui/Chip';
 import { Tag } from '@/ui/Tag';
 import { TextField } from '@/ui/TextField';
-import { space } from '@/ui/theme';
+import { estado, space } from '@/ui/theme';
 
 import type { MissingFieldModel } from './model';
 
 type Props = {
   field: MissingFieldModel;
+  /** Cambia cuando la tarjeta pasa a mostrar otro dato: ahí el campo vuelve a empezar. */
+  resetKey: string;
   /** Lo elegido hasta ahora; vacío si todavía nada. */
   value: string;
   onChange: (value: string) => void;
@@ -18,10 +20,10 @@ type Props = {
 
 // Un campo que falta en un dato: se completa tocando una sugerencia o,
 // si no está entre ellas, escribiendo el valor.
-export function MissingField({ field, value, onChange }: Props) {
+export function MissingField({ field, resetKey, value, onChange }: Props) {
   const { suggestions } = field;
   // Sin sugerencias no hay nada que elegir: se escribe directo.
-  const [writing, setWriting] = useState(suggestions.length === 0);
+  const [writing, setWriting] = useRecyclingState(suggestions.length === 0, [resetKey, field.key]);
 
   return (
     <View style={{ gap: space[8] }}>
@@ -57,7 +59,17 @@ export function MissingField({ field, value, onChange }: Props) {
       ) : null}
 
       {writing ? (
-        <TextField placeholder={field.placeholder} value={value} onChangeText={onChange} keyboardType={field.numeric ? 'decimal-pad' : 'default'} />
+        <TextField
+          placeholder={field.placeholder}
+          value={value}
+          onChangeText={onChange}
+          keyboardType={field.numeric ? 'decimal-pad' : 'default'}
+          error={field.error ?? undefined}
+        />
+      ) : field.error ? (
+        <AppText variant="caption" style={{ color: estado.error.texto }}>
+          {field.error}
+        </AppText>
       ) : null}
     </View>
   );
