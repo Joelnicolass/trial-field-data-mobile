@@ -3,14 +3,10 @@ import { View } from 'react-native';
 import { AppText } from '@/ui/AppText';
 import { color, space } from '@/ui/theme';
 
-export type Quote = {
-  author: string;
-  /** Una línea del mensaje citado. */
-  snippet: string;
-};
+import type { QuoteModel } from './model';
 
 // El mensaje al que se responde, arriba del texto: quién lo dijo y una línea.
-export function ReplyQuote({ author, snippet }: Quote) {
+export function ReplyQuote({ author, snippet }: QuoteModel) {
   return (
     <View
       style={{

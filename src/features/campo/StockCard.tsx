@@ -1,44 +1,40 @@
 import { Pressable, View } from 'react-native';
 
-import { groupStock, type CampoData, type StockGroup } from '@/domain/campo';
-import { formatDate, formatNumber, formatQuantity } from '@/domain/format';
-import { useNow } from '@/hooks/useNow';
 import { AppText } from '@/ui/AppText';
 import { Card } from '@/ui/Card';
 import { Icon } from '@/ui/Icon';
 import { StackedBar } from '@/ui/StackedBar';
 import { categorias, color, otras, space, toqueMinimo } from '@/ui/theme';
 
+import type { StockGroupModel, StockModel } from './model';
+
 type Props = {
-  stock: CampoData['stock'];
+  stock: StockModel;
   /** Tocar una categoría lleva a sus animales. */
-  onSelectCategory?: (categoryId: number) => void;
+  onSelectCategory: (categoryId: number) => void;
 };
 
 // Cuántos animales hay y cómo se reparten por categoría.
 export function StockCard({ stock, onSelectCategory }: Props) {
-  const now = useNow();
-  const groups = groupStock(stock.by_category);
-
   return (
     <Card title="Stock">
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space[8] }}>
         <AppText variant="h1" tone="tinta" tabular>
-          {formatNumber(stock.total_head_count)}
+          {stock.total}
         </AppText>
         <AppText>cabezas</AppText>
       </View>
 
-      <StackedBar segments={groups.map((group, index) => ({ key: group.name, value: group.headCount, color: colorFor(group, index) }))} />
+      <StackedBar segments={stock.groups.map((group, index) => ({ key: group.key, value: group.value, color: colorFor(group, index) }))} />
 
       <View>
-        {groups.map((group, index) => {
+        {stock.groups.map((group, index) => {
           const { categoryId } = group;
           return (
             <Pressable
-              key={group.name}
-              disabled={categoryId === null || !onSelectCategory}
-              onPress={() => categoryId !== null && onSelectCategory?.(categoryId)}
+              key={group.key}
+              disabled={categoryId === null}
+              onPress={() => categoryId !== null && onSelectCategory(categoryId)}
               style={{
                 minHeight: toqueMinimo,
                 flexDirection: 'row',
@@ -55,13 +51,13 @@ export function StockCard({ stock, onSelectCategory }: Props) {
                   {group.name}
                 </AppText>
                 <AppText variant="caption" tone="secundario" tabular style={{ lineHeight: 16 }}>
-                  {weightLine(group, now)}
+                  {group.detail}
                 </AppText>
               </View>
               <AppText variant="h4" tone="tinta" tabular>
-                {formatNumber(group.headCount)}
+                {group.count}
               </AppText>
-              {categoryId !== null && onSelectCategory ? <Icon name="chevron-right" size={16} tint={color.secundario} /> : null}
+              {categoryId !== null ? <Icon name="chevron-right" size={16} tint={color.secundario} /> : null}
             </Pressable>
           );
         })}
@@ -70,12 +66,8 @@ export function StockCard({ stock, onSelectCategory }: Props) {
   );
 }
 
-// El color sale del orden, no de la categoría: la que más tiene lleva el primero.
-function colorFor(group: StockGroup, index: number): string {
+// El color sale del orden, no de la categoría: la que más tiene lleva el
+// primero. "Otras" va en gris.
+function colorFor(group: StockGroupModel, index: number): string {
   return group.categoryId === null ? otras : categorias[index % categorias.length];
-}
-
-function weightLine(group: StockGroup, now: string): string {
-  if (group.avgWeightKg === null || group.lastWeighingDate === null) return 'Sin pesaje';
-  return `${formatQuantity(group.avgWeightKg, 'kg')} promedio · pesaje ${formatDate(group.lastWeighingDate, now)}`;
 }

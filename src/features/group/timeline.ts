@@ -9,13 +9,25 @@ export type TimelineItem =
   | { kind: 'unread'; key: string; count: number }
   | { kind: 'message'; key: string; message: Message };
 
+export type ReadMarks = {
+  /** Mi id: lo que mandé yo nunca cuenta como sin leer. */
+  me: MemberId;
+  /** Hasta qué mensaje leí la última vez (mi `watermark`). */
+  lastReadSeq: number;
+  /** El último mensaje que había al abrir el grupo. */
+  loadedUpToSeq: number;
+};
+
 /**
- * @param messages    Ordenados por `seq`.
- * @param lastReadSeq Hasta qué mensaje leí la última vez (mi `watermark`).
- * @param me          Mi id: lo que mandé yo nunca cuenta como sin leer.
+ * @param messages Ordenados por `seq`.
+ * @param marks    De dónde a dónde va lo "sin leer". Lo que llega con el
+ *                 grupo abierto no entra: el número del separador no cambia
+ *                 mientras se lee.
  */
-export function buildTimeline(messages: Message[], lastReadSeq: number, me: MemberId): TimelineItem[] {
-  const unread = messages.filter((message) => message.seq > lastReadSeq && message.sender_id !== me);
+export function buildTimeline(messages: Message[], marks: ReadMarks): TimelineItem[] {
+  const unread = messages.filter(
+    (message) => message.seq > marks.lastReadSeq && message.seq <= marks.loadedUpToSeq && message.sender_id !== marks.me,
+  );
   const firstUnreadSeq = unread[0]?.seq;
 
   const items: TimelineItem[] = [];

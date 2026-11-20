@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import type { Field } from '@/server/mock-server';
 import { AppText } from '@/ui/AppText';
 import { Chip } from '@/ui/Chip';
 import { Tag } from '@/ui/Tag';
 import { TextField } from '@/ui/TextField';
 import { space } from '@/ui/theme';
 
+import type { MissingFieldModel } from './model';
+
 type Props = {
-  field: Field;
-  /** Valores que propone el agente. Puede no haber ninguno. */
-  suggestions: string[];
+  field: MissingFieldModel;
   /** Lo elegido hasta ahora; vacío si todavía nada. */
   value: string;
   onChange: (value: string) => void;
@@ -19,7 +18,8 @@ type Props = {
 
 // Un campo que falta en un dato: se completa tocando una sugerencia o,
 // si no está entre ellas, escribiendo el valor.
-export function MissingField({ field, suggestions, value, onChange }: Props) {
+export function MissingField({ field, value, onChange }: Props) {
+  const { suggestions } = field;
   // Sin sugerencias no hay nada que elegir: se escribe directo.
   const [writing, setWriting] = useState(suggestions.length === 0);
 
@@ -57,12 +57,7 @@ export function MissingField({ field, suggestions, value, onChange }: Props) {
       ) : null}
 
       {writing ? (
-        <TextField
-          placeholder={field.unit ? `${field.label} (${field.unit})` : field.label}
-          value={value}
-          onChangeText={onChange}
-          keyboardType={field.type === 'number' ? 'decimal-pad' : 'default'}
-        />
+        <TextField placeholder={field.placeholder} value={value} onChangeText={onChange} keyboardType={field.numeric ? 'decimal-pad' : 'default'} />
       ) : null}
     </View>
   );

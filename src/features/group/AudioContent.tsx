@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { formatDuration } from '@/domain/format';
 import { AppText } from '@/ui/AppText';
 import { Icon } from '@/ui/Icon';
 import { color, space, toqueMinimo } from '@/ui/theme';
 
 type Props = {
-  durationMs: number;
+  /** Ya escrita: "0:38". */
+  duration: string;
   /** Lo que se dijo. Puede no estar: hay audios sin transcripción. */
   transcript: string | null;
 };
@@ -17,7 +17,7 @@ const BARS = [8, 14, 20, 12, 24, 16, 10, 22, 14, 18, 8, 16, 24, 12, 18, 10, 20, 
 
 // Un audio: botón, dibujo de la onda, duración y, abajo, lo que se dijo.
 // En el campo muchas veces no se puede escuchar: el texto es lo que se lee.
-export function AudioContent({ durationMs, transcript }: Props) {
+export function AudioContent({ duration, transcript }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -41,7 +41,7 @@ export function AudioContent({ durationMs, transcript }: Props) {
           ))}
         </View>
         <AppText variant="caption" tone="secundario" tabular>
-          {formatDuration(durationMs)}
+          {duration}
         </AppText>
       </View>
 
