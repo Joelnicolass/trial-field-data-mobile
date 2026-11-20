@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import type { GroupRain } from '@/domain/campo';
+import { groupRainsFromDatos } from '@/domain/campo';
 import { formatQuantity } from '@/domain/format';
 import { AnimalBrowser } from '@/features/campo/AnimalBrowser';
 import { PalpationCard } from '@/features/campo/PalpationCard';
 import { RainfallCard } from '@/features/campo/RainfallCard';
 import { StockCard } from '@/features/campo/StockCard';
 import { useCampoData } from '@/hooks/useCampoData';
+import { useDatos } from '@/store/chatStore';
 import { ScreenHeader } from '@/ui/ScreenHeader';
 import { SegmentedTabs } from '@/ui/SegmentedTabs';
 import { color, space } from '@/ui/theme';
@@ -19,13 +20,13 @@ const SECTIONS: { key: Section; label: string }[] = [
   { key: 'animales', label: 'Animales' },
 ];
 
-// De muestra: la lluvia que se anotó en el grupo. Cuando la pantalla lea del
-// servidor, sale de los datos guardados en el grupo.
-const SAMPLE_GROUP_RAINS: GroupRain[] = [{ date: '2026-11-17', mm: 25 }];
-
 // Los datos del campo: un resumen (stock, tacto y lluvia) y la lista de animales.
 export default function CampoScreen() {
   const data = useCampoData();
+  // Lo que se anota en el grupo cuenta acá: si alguien carga o corrige una
+  // lluvia, el total del mes cambia solo.
+  const datos = useDatos();
+  const groupRains = groupRainsFromDatos(datos, data.rainfall.gauge);
   const [section, setSection] = useState<Section>('resumen');
   const [categoryId, setCategoryId] = useState<number | null>(null);
 
@@ -44,7 +45,7 @@ export default function CampoScreen() {
         <ScrollView contentContainerStyle={{ padding: space[16], gap: space[16] }}>
           <StockCard stock={data.stock} onSelectCategory={openCategory} />
           <PalpationCard palpation={data.palpation} />
-          <RainfallCard rainfall={data.rainfall} groupRains={SAMPLE_GROUP_RAINS} />
+          <RainfallCard rainfall={data.rainfall} groupRains={groupRains} />
         </ScrollView>
       ) : (
         // `key` reinicia la lista cuando se llega con otra categoría elegida.

@@ -2,6 +2,8 @@
 // para dibujarlo, la lluvia mes a mes (con lo que se anota en el grupo) y el
 // filtro de animales. TypeScript puro, con tests.
 
+import type { Dato } from '@/server/mock-server';
+
 export type StockCategory = {
   category_id: number;
   category_name: string;
@@ -128,6 +130,30 @@ export function rainfallByMonth(months: RainfallMonth[], groupRains: GroupRain[]
       until: month.until ?? null,
     };
   });
+}
+
+/**
+ * Las lluvias guardadas en el grupo, listas para sumar a su mes. Una lluvia a
+ * la que le falta un dato no cuenta: el agente guarda solo lo que está completo.
+ * Tampoco cuenta la de otro pluviómetro.
+ */
+export function groupRainsFromDatos(datos: Record<string, Dato>, gauge: string): GroupRain[] {
+  const rains: GroupRain[] = [];
+
+  for (const dato of Object.values(datos)) {
+    if (dato.structure_name !== 'rainfall' || dato.status !== 'saved') continue;
+
+    const value = (key: string) => dato.fields.find((field) => field.key === key)?.value;
+    const mm = value('rainfall_mm');
+    const date = value('date');
+    const datoGauge = value('gauge');
+
+    if (typeof mm !== 'number' || typeof date !== 'string') continue;
+    if (typeof datoGauge === 'string' && datoGauge !== gauge) continue;
+    rains.push({ date, mm });
+  }
+
+  return rains;
 }
 
 /** El total de los meses que tienen registro. */

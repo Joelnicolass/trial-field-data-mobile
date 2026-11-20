@@ -46,10 +46,13 @@ export function AgentMessage({ message, dato, showLabel = true, onOpen, onComple
 function Content({ message, dato, onOpen, onComplete }: Omit<Props, 'showLabel'>) {
   if (message.type === 'dato' && dato) {
     const { opens } = dato;
+    // Lo que dijo el agente al anotarlo ("Me falta qué vacuna usaste.") deja de
+    // valer cuando alguien cambia el dato: ahí manda lo que muestra la tarjeta.
+    const changedSince = message.dato !== undefined && dato.version > message.dato.version;
     return (
       <DatoCard
         dato={dato}
-        intro={message.text}
+        intro={changedSince ? null : message.text}
         onOpen={opens && onOpen ? () => onOpen(opens) : undefined}
         onComplete={onComplete ? (values) => onComplete(dato.id, values) : undefined}
       />
