@@ -11,15 +11,17 @@ import { UnreadDivider } from './UnreadDivider';
 type Props = {
   row: GroupRow;
   onOpen: (target: OpenTarget) => void;
+  /** Vuelve a mandar un mensaje mío que falló. */
+  onRetry: (localId: string) => void;
 };
 
 // Un renglón de la lista del grupo. Acá solo se elige con qué pieza se
 // dibuja cada tipo; qué dice cada una ya viene resuelto en `row`.
-export function GroupRowView({ row, onOpen }: Props) {
-  return <View style={{ paddingHorizontal: space[16], paddingBottom: space[12] }}>{renderRow(row, onOpen)}</View>;
+export function GroupRowView({ row, onOpen, onRetry }: Props) {
+  return <View style={{ paddingHorizontal: space[16], paddingBottom: space[12] }}>{renderRow(row, onOpen, onRetry)}</View>;
 }
 
-function renderRow(row: GroupRow, onOpen: (target: OpenTarget) => void) {
+function renderRow(row: GroupRow, onOpen: Props['onOpen'], onRetry: Props['onRetry']) {
   switch (row.kind) {
     case 'day':
       return <CenterLine text={row.label} />;
@@ -28,7 +30,7 @@ function renderRow(row: GroupRow, onOpen: (target: OpenTarget) => void) {
     case 'line':
       return <CenterLine text={row.text} icon={row.isChange ? 'edit-3' : undefined} />;
     case 'person':
-      return <PersonMessage row={row} />;
+      return <PersonMessage row={row} onRetry={row.localId ? () => onRetry(row.localId!) : undefined} />;
     case 'agent':
       return <AgentMessage row={row} onOpen={onOpen} />;
   }

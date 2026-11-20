@@ -91,6 +91,8 @@ export type GroupRow =
       quote: QuoteModel | null;
       body: PersonBody;
       delivery: DeliveryStatus | null;
+      /** Para reintentar. Solo en lo mío que todavía no salió. */
+      localId: string | null;
     }
   | {
       kind: 'agent';

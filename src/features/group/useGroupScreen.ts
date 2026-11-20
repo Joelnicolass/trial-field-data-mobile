@@ -19,6 +19,8 @@ export function useGroupScreen() {
   const chat = useChatStore((state) => state.chat);
   const start = useChatStore((state) => state.start);
   const markReadUpTo = useChatStore((state) => state.markReadUpTo);
+  const sendText = useChatStore((state) => state.sendText);
+  const retrySend = useChatStore((state) => state.retry);
   const datos = useDatos();
   const now = useNow();
 
@@ -37,5 +39,5 @@ export function useGroupScreen() {
     if (atBottom) markReadUpTo(lastSeq);
   }, [atBottom, lastSeq, markReadUpTo]);
 
-  return { status, model, retry: start, newCount, onScroll };
+  return { status, model, retry: start, newCount, onScroll, sendText, retrySend };
 }
