@@ -1,13 +1,10 @@
+import { campoData } from '@/api';
 import type { CampoData } from '@/domain/campo';
-import data from '@/server/mock-data.json';
 
 /**
- * Los datos del campo: stock, tacto, lluvia y animales. Hoy salen del archivo
- * de prueba; es el único lugar que habría que cambiar para pedirlos a un
- * servidor.
+ * Los datos del campo: stock, tacto, lluvia y animales. De dónde salen lo
+ * decide `src/api`: hoy es el archivo de prueba.
  */
 export function useCampoData(): CampoData {
-  // TypeScript deduce del JSON un tipo distinto por cada animal; `CampoData`
-  // es la forma que la app usa de verdad.
-  return data as unknown as CampoData;
+  return campoData;
 }

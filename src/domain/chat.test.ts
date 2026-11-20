@@ -1,4 +1,4 @@
-import type { ChatSnapshot, Dato, Message } from '@/server/mock-server';
+import type { ChatSnapshot, Dato, Message } from './types';
 
 import {
   applyEvent,

@@ -1,5 +1,5 @@
 import { typingMembers, type ChatState } from '@/domain/chat';
-import type { AgentStatus } from '@/server/mock-server';
+import type { AgentStatus } from '@/domain/types';
 
 /** Lo que hace el agente, en palabras. Sin texto cuando no hace nada. */
 export function agentActivity(status: AgentStatus): { text: string; slow: boolean } | null {

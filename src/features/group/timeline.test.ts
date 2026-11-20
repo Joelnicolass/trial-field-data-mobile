@@ -1,4 +1,4 @@
-import type { Message } from '@/server/mock-server';
+import type { Message } from '@/domain/types';
 
 import type { Outgoing } from '@/domain/chat';
 

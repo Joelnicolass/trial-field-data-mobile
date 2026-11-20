@@ -6,7 +6,7 @@
 // orden, tiene que dar el mismo resultado. El servidor entrega mensajes
 // tarde y repetidos, y con esa regla ninguno de los dos casos rompe nada.
 
-import type { AgentMode, AgentStatus, ChatSnapshot, Dato, DatoChange, Member, MemberId, Message, ServerEvent } from '@/server/mock-server';
+import type { AgentMode, AgentStatus, ChatSnapshot, Dato, DatoChange, Member, MemberId, Message, ServerEvent } from './types';
 
 import { memoizeLast } from './sharing';
 

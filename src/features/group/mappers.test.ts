@@ -1,5 +1,5 @@
 import { applyEvent, chatFromSnapshot, failDatoSave, markVoiceNote, queueOutgoing, startDatoSave, type ChatState } from '@/domain/chat';
-import type { ChatSnapshot, Dato, Message } from '@/server/mock-server';
+import type { ChatSnapshot, Dato, Message } from '@/domain/types';
 
 import { toMentionOptions, toNotice, toOfflineNotice, toRow } from './mappers';
 import type { GroupRow } from './model';
