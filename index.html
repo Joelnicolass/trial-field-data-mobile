@@ -63,6 +63,9 @@
         font: 12.5px/1.5 ui-monospace, Menlo, monospace; color: var(--tinta); overflow-x: auto; }
   .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
   .two h4 { margin: 12px 0 0; font-size: 14px; color: var(--tinta); }
+
+  td.group { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--secundario); font-weight: 600;
+             background: var(--inset); padding: 8px 12px; width: auto; }
   @media (max-width: 640px) { td:first-child { width: 50%; } section { padding: 16px; } }
 </style>
 </head>
@@ -282,6 +285,177 @@
   </table>
 
 </section>
+
+<section>
+  <h2>Todos los eventos y cómo los interpreta la app</h2>
+  <p>Todo lo que puede pasar entra por alguno de estos caminos. Cada evento pasa por una función pura, cambia una parte del estado y eso se ve en un lugar de la pantalla.</p>
+  <h3>El recorrido, de izquierda a derecha</h3>
+  <div class="tree-wrap">
+<svg viewBox="0 0 942 530" width="942" height="530" role="img" aria-label="De cada evento a lo que cambia en la pantalla" style="display:block;font-family:Inter,system-ui,sans-serif">
+<text x="1" y="16" font-size="12" font-weight="600" fill="#697586" letter-spacing=".08em">EVENTO</text>
+<text x="251" y="16" font-size="12" font-weight="600" fill="#697586" letter-spacing=".08em">FUNCIÓN PURA</text>
+<text x="501" y="16" font-size="12" font-weight="600" fill="#697586" letter-spacing=".08em">ESTADO</text>
+<text x="751" y="16" font-size="12" font-weight="600" fill="#697586" letter-spacing=".08em">PANTALLA</text>
+<path d="M191 57.0 C221.0 57.0,221.0 57.0,251 57.0" fill="none" stroke="#243552" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M191 119.0 C221.0 119.0,221.0 119.0,251 119.0" fill="none" stroke="#243552" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M191 181.0 C221.0 181.0,221.0 181.0,251 181.0" fill="none" stroke="#243552" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M191 243.0 C221.0 243.0,221.0 243.0,251 243.0" fill="none" stroke="#243552" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M191 305.0 C221.0 305.0,221.0 305.0,251 305.0" fill="none" stroke="#243552" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M191 367.0 C221.0 367.0,221.0 367.0,251 367.0" fill="none" stroke="#243552" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M191 429.0 C221.0 429.0,221.0 429.0,251 429.0" fill="none" stroke="#243552" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M191 491.0 C221.0 491.0,221.0 491.0,251 491.0" fill="none" stroke="#243552" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M441 57.0 C471.0 57.0,471.0 88.0,501 88.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M441 57.0 C471.0 57.0,471.0 150.0,501 150.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M441 57.0 C471.0 57.0,471.0 336.0,501 336.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M441 119.0 C471.0 119.0,471.0 88.0,501 88.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M441 119.0 C471.0 119.0,471.0 336.0,501 336.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M441 119.0 C471.0 119.0,471.0 212.0,501 212.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M441 181.0 C471.0 181.0,471.0 212.0,501 212.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M441 243.0 C471.0 243.0,471.0 274.0,501 274.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M441 305.0 C471.0 305.0,471.0 336.0,501 336.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M441 367.0 C471.0 367.0,471.0 336.0,501 336.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M441 429.0 C471.0 429.0,471.0 398.0,501 398.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M441 491.0 C471.0 491.0,471.0 398.0,501 398.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M441 491.0 C471.0 491.0,471.0 460.0,501 460.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M691 88.0 C721.0 88.0,721.0 57.0,751 57.0" fill="none" stroke="#115293" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M691 88.0 C721.0 88.0,721.0 119.0,751 119.0" fill="none" stroke="#115293" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M691 88.0 C721.0 88.0,721.0 181.0,751 181.0" fill="none" stroke="#115293" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M691 88.0 C721.0 88.0,721.0 491.0,751 491.0" fill="none" stroke="#115293" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M691 150.0 C721.0 150.0,721.0 181.0,751 181.0" fill="none" stroke="#115293" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M691 212.0 C721.0 212.0,721.0 243.0,751 243.0" fill="none" stroke="#115293" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M691 274.0 C721.0 274.0,721.0 243.0,751 243.0" fill="none" stroke="#115293" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M691 336.0 C721.0 336.0,721.0 305.0,751 305.0" fill="none" stroke="#115293" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M691 398.0 C721.0 398.0,721.0 367.0,751 367.0" fill="none" stroke="#115293" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M691 460.0 C721.0 460.0,721.0 429.0,751 429.0" fill="none" stroke="#115293" stroke-opacity=".45" stroke-width="1.5"/>
+<rect x="1" y="34.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#243552" stroke-width="1.5"/>
+<text x="13" y="53.0" font-size="13" font-weight="600" fill="#121926">Carga inicial</text>
+<text x="13" y="69.0" font-size="12" fill="#697586">loadChat()</text>
+<rect x="1" y="96.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#243552" stroke-width="1.5"/>
+<text x="13" y="115.0" font-size="13" font-weight="600" fill="#121926">Llega un mensaje</text>
+<text x="13" y="131.0" font-size="12" fill="#697586">message</text>
+<rect x="1" y="158.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#243552" stroke-width="1.5"/>
+<text x="13" y="177.0" font-size="13" font-weight="600" fill="#121926">Alguien escribe</text>
+<text x="13" y="193.0" font-size="12" fill="#697586">typing</text>
+<rect x="1" y="220.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#243552" stroke-width="1.5"/>
+<text x="13" y="239.0" font-size="13" font-weight="600" fill="#121926">Estado del agente</text>
+<text x="13" y="255.0" font-size="12" fill="#697586">agent_status</text>
+<rect x="1" y="282.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#243552" stroke-width="1.5"/>
+<text x="13" y="301.0" font-size="13" font-weight="600" fill="#121926">Mando un mensaje</text>
+<text x="13" y="317.0" font-size="12" fill="#697586">send()</text>
+<rect x="1" y="344.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#243552" stroke-width="1.5"/>
+<text x="13" y="363.0" font-size="13" font-weight="600" fill="#121926">El envío falla</text>
+<text x="13" y="379.0" font-size="12" fill="#697586">no_connection</text>
+<rect x="1" y="406.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#243552" stroke-width="1.5"/>
+<text x="13" y="425.0" font-size="13" font-weight="600" fill="#121926">Completo un dato</text>
+<text x="13" y="441.0" font-size="12" fill="#697586">completeDato()</text>
+<rect x="1" y="468.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#243552" stroke-width="1.5"/>
+<text x="13" y="487.0" font-size="13" font-weight="600" fill="#121926">Completar falla</text>
+<text x="13" y="503.0" font-size="12" fill="#697586">stale · invalid · sin señal</text>
+<rect x="251" y="34.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#0077AD" stroke-width="1.5"/>
+<text x="263" y="53.0" font-size="13" font-weight="600" fill="#121926">Arma el estado inicial</text>
+<text x="263" y="69.0" font-size="12" fill="#697586">chatFromSnapshot</text>
+<rect x="251" y="96.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#0077AD" stroke-width="1.5"/>
+<text x="263" y="115.0" font-size="13" font-weight="600" fill="#121926">Ubica el mensaje</text>
+<text x="263" y="131.0" font-size="12" fill="#697586">receiveMessage</text>
+<rect x="251" y="158.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#0077AD" stroke-width="1.5"/>
+<text x="263" y="177.0" font-size="13" font-weight="600" fill="#121926">Anota hasta cuándo</text>
+<text x="263" y="193.0" font-size="12" fill="#697586">applyEvent</text>
+<rect x="251" y="220.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#0077AD" stroke-width="1.5"/>
+<text x="263" y="239.0" font-size="13" font-weight="600" fill="#121926">Guarda en qué está</text>
+<text x="263" y="255.0" font-size="12" fill="#697586">applyEvent</text>
+<rect x="251" y="282.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#0077AD" stroke-width="1.5"/>
+<text x="263" y="301.0" font-size="13" font-weight="600" fill="#121926">Lo pone enviándose</text>
+<text x="263" y="317.0" font-size="12" fill="#697586">queueOutgoing</text>
+<rect x="251" y="344.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#0077AD" stroke-width="1.5"/>
+<text x="263" y="363.0" font-size="13" font-weight="600" fill="#121926">Lo marca fallido</text>
+<text x="263" y="379.0" font-size="12" fill="#697586">failOutgoing</text>
+<rect x="251" y="406.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#0077AD" stroke-width="1.5"/>
+<text x="263" y="425.0" font-size="13" font-weight="600" fill="#121926">Lo pone guardando</text>
+<text x="263" y="441.0" font-size="12" fill="#697586">startDatoSave</text>
+<rect x="251" y="468.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#0077AD" stroke-width="1.5"/>
+<text x="263" y="487.0" font-size="13" font-weight="600" fill="#121926">Anota por qué falló</text>
+<text x="263" y="503.0" font-size="12" fill="#697586">failDatoSave · endDatoSave</text>
+<rect x="501" y="65.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#115293" stroke-width="1.5"/>
+<text x="513" y="84.0" font-size="13" font-weight="600" fill="#121926">Mensajes</text>
+<text x="513" y="100.0" font-size="12" fill="#697586">ordenados, sin repetidos</text>
+<rect x="501" y="127.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#115293" stroke-width="1.5"/>
+<text x="513" y="146.0" font-size="13" font-weight="600" fill="#121926">Hasta dónde leí</text>
+<text x="513" y="162.0" font-size="12" fill="#697586">lastReadSeq</text>
+<rect x="501" y="189.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#115293" stroke-width="1.5"/>
+<text x="513" y="208.0" font-size="13" font-weight="600" fill="#121926">Quién escribe</text>
+<text x="513" y="224.0" font-size="12" fill="#697586">typingUntil</text>
+<rect x="501" y="251.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#115293" stroke-width="1.5"/>
+<text x="513" y="270.0" font-size="13" font-weight="600" fill="#121926">El agente</text>
+<text x="513" y="286.0" font-size="12" fill="#697586">agentStatus</text>
+<rect x="501" y="313.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#115293" stroke-width="1.5"/>
+<text x="513" y="332.0" font-size="13" font-weight="600" fill="#121926">Pendientes de envío</text>
+<text x="513" y="348.0" font-size="12" fill="#697586">outbox</text>
+<rect x="501" y="375.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#115293" stroke-width="1.5"/>
+<text x="513" y="394.0" font-size="13" font-weight="600" fill="#121926">Guardados en curso</text>
+<text x="513" y="410.0" font-size="12" fill="#697586">datoSaves</text>
+<rect x="501" y="437.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#115293" stroke-width="1.5"/>
+<text x="513" y="456.0" font-size="13" font-weight="600" fill="#121926">Aviso</text>
+<text x="513" y="472.0" font-size="12" fill="#697586">noticeCode</text>
+<rect x="751" y="34.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#1C8300" stroke-width="1.5"/>
+<text x="763" y="53.0" font-size="13" font-weight="600" fill="#121926">Renglones del grupo</text>
+<text x="763" y="69.0" font-size="12" fill="#697586">globos, líneas, tablas</text>
+<rect x="751" y="96.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#1C8300" stroke-width="1.5"/>
+<text x="763" y="115.0" font-size="13" font-weight="600" fill="#121926">Tarjetas de dato</text>
+<text x="763" y="131.0" font-size="12" fill="#697586">siempre al día</text>
+<rect x="751" y="158.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#1C8300" stroke-width="1.5"/>
+<text x="763" y="177.0" font-size="13" font-weight="600" fill="#121926">Sin leer y nuevos</text>
+<text x="763" y="193.0" font-size="12" fill="#697586">separador y aviso</text>
+<rect x="751" y="220.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#1C8300" stroke-width="1.5"/>
+<text x="763" y="239.0" font-size="13" font-weight="600" fill="#121926">Quién escribe, agente</text>
+<text x="763" y="255.0" font-size="12" fill="#697586">barra y pie de lista</text>
+<rect x="751" y="282.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#1C8300" stroke-width="1.5"/>
+<text x="763" y="301.0" font-size="13" font-weight="600" fill="#121926">Mis mensajes</text>
+<text x="763" y="317.0" font-size="12" fill="#697586">enviándose · enviado · falló</text>
+<rect x="751" y="344.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#1C8300" stroke-width="1.5"/>
+<text x="763" y="363.0" font-size="13" font-weight="600" fill="#121926">Botón Completar</text>
+<text x="763" y="379.0" font-size="12" fill="#697586">guardando o error</text>
+<rect x="751" y="406.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#1C8300" stroke-width="1.5"/>
+<text x="763" y="425.0" font-size="13" font-weight="600" fill="#121926">Aviso abajo</text>
+<text x="763" y="441.0" font-size="12" fill="#697586">se cierra solo</text>
+<rect x="751" y="468.0" width="190" height="46" rx="8" fill="#FFFFFF" stroke="#1C8300" stroke-width="1.5"/>
+<text x="763" y="487.0" font-size="13" font-weight="600" fill="#121926">Lluvia en Campo</text>
+<text x="763" y="503.0" font-size="12" fill="#697586">suma lo del grupo</text>
+</svg>
+  </div>
+  <h3>Evento por evento</h3>
+  <table>
+    <tr><th>Evento</th><th>Qué hace la app con los datos</th><th>Qué se ve</th></tr>
+    <tr><td colspan="3" class="group">Del servidor, al abrir</td></tr>
+    <tr><td>El grupo cargó</td><td>Ordena el historial, toma mi marca de lectura y deja como fallido lo que había quedado sin enviar.</td><td>La lista, abierta en lo primero sin leer.</td></tr>
+    <tr><td>El grupo no cargó</td><td>Queda en estado de error.</td><td>"No pudimos cargar el contenido" y el botón Reintentar.</td></tr>
+    <tr><td colspan="3" class="group">Del servidor, en vivo: mensajes</td></tr>
+    <tr><td>Texto, audio o foto de una persona</td><td>Entra en su lugar por número de orden. Si ya estaba, se descarta. Quien escribía deja de escribir.</td><td>Un globo con nombre y rol; los míos, a la derecha.</td></tr>
+    <tr><td>Aviso del grupo</td><td>Igual que cualquier mensaje.</td><td>Una línea centrada, sin globo.</td></tr>
+    <tr><td>Dato que anota el agente</td><td>Igual, y el dato queda identificado por su id.</td><td>Tarjeta guardada, o en naranja si le falta algo.</td></tr>
+    <tr><td>Número que responde el agente</td><td>Igual que cualquier mensaje.</td><td>Tarjeta con el número grande.</td></tr>
+    <tr><td>Tabla que responde el agente</td><td>Igual que cualquier mensaje.</td><td>Tabla con las columnas que vengan.</td></tr>
+    <tr><td>Cambio de un dato</td><td>Se aplica al dato solo si su versión es más nueva que la que hay.</td><td>Cambia la tarjeta original, y queda una línea que dice quién lo cambió.</td></tr>
+    <tr><td>Un mensaje que mandé yo</td><td>Trae mi identificador: saca de los pendientes al que estaba "enviándose".</td><td>El mismo globo, ahora con la tilde.</td></tr>
+    <tr><td colspan="3" class="group">Del servidor, en vivo: actividad</td></tr>
+    <tr><td>Alguien escribe</td><td>Anota quién y hasta cuándo: 6 segundos, o hasta que mande algo.</td><td>"Ramón está escribiendo…" arriba y al pie.</td></tr>
+    <tr><td>El agente piensa</td><td>Guarda el estado.</td><td>"El agente está pensando…".</td></tr>
+    <tr><td>El agente tarda</td><td>Guarda el estado.</td><td>"El agente está tardando más de lo normal…".</td></tr>
+    <tr><td>El agente terminó</td><td>Guarda el estado.</td><td>Desaparece la línea.</td></tr>
+    <tr><td colspan="3" class="group">Respuestas a lo que hago</td></tr>
+    <tr><td>El envío salió</td><td>Recibe el mensaje confirmado. Si además llega como evento, la segunda vez no cambia nada.</td><td>Tilde de enviado.</td></tr>
+    <tr><td>El envío falló</td><td>El pendiente pasa a fallido y conserva su identificador.</td><td>"No se envió · Reintentar".</td></tr>
+    <tr><td>El dato se completó</td><td>Recibe el cambio, hecho por mí, y cierra el intento.</td><td>La tarjeta pasa a "Guardado" y queda la línea.</td></tr>
+    <tr><td>Otro lo completó antes</td><td>Cierra el intento sin reintentar: el cambio del otro ya llegó como evento.</td><td>Un aviso abajo. La tarjeta ya muestra cómo quedó.</td></tr>
+    <tr><td>El valor no sirve</td><td>El intento queda fallido, con el campo que lo causó.</td><td>Ese campo marcado, con qué hacer.</td></tr>
+    <tr><td>No había nada que cambiar</td><td>Cierra el intento.</td><td>Un aviso abajo.</td></tr>
+    <tr><td>El dato ya no existe</td><td>Cierra el intento.</td><td>Un aviso abajo.</td></tr>
+    <tr><td>No hay señal al completar</td><td>El intento queda fallido y lo elegido no se pierde.</td><td>"No se pudo guardar" y el botón Reintentar.</td></tr>
+    <tr><td colspan="3" class="group">De la pantalla</td></tr>
+    <tr><td>Llego al final de la lista</td><td>Avisa al servidor hasta qué mensaje leí.</td><td>Se va el aviso de mensajes nuevos.</td></tr>
+    <tr><td>Toco una tarjeta</td><td>Nada cambia en los datos: se traduce adónde lleva.</td><td>Campo abre en esa sección, con el filtro a la vista.</td></tr>
+  </table>
+</section>
+
 
 
 <section>
