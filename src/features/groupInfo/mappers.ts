@@ -10,7 +10,7 @@ import type { ChatState } from '@/domain/chat';
 import { formatDate, formatTime } from '@/domain/format';
 import { roleLabel } from '@/features/group/roles';
 import { messageSnippet } from '@/features/group/timeline';
-import type { AgentMode, MessageType } from '@/server/mock-server';
+import type { AgentMode, Message, MessageType } from '@/domain/types';
 
 import type { AgentModeModel, GroupInfoModel, MemberModel, SeenMessageModel } from './model';
 
@@ -87,21 +87,28 @@ function toMyMessages(chat: ChatState, now: string): SeenMessageModel[] {
   // Quién lo pudo ver: las personas, sin contarme. El agente no es una persona.
   const readers = chat.members.filter((member) => !member.is_agent && member.id !== chat.me);
 
-  return chat.messages
-    .filter((message) => message.sender_id === chat.me && OWN_TYPES.includes(message.type))
-    .slice(-MAX_MY_MESSAGES)
-    .reverse()
-    .map((message) => {
-      // Lo vio quien leyó hasta ese mensaje o más adelante.
-      const names = readers.filter((reader) => reader.watermark >= message.seq).map((reader) => reader.short_name);
-      return {
-        key: message.message_id,
-        snippet: messageSnippet(message),
-        when: sentAt(message.created_at, now),
-        seen: names.length > 0,
-        seenBy: seenByText(names),
-      };
-    });
+  return lastOwnMessages(chat).map((message) => {
+    // Lo vio quien leyó hasta ese mensaje o más adelante.
+    const names = readers.filter((reader) => reader.watermark >= message.seq).map((reader) => reader.short_name);
+    return {
+      key: message.message_id,
+      snippet: messageSnippet(message),
+      when: sentAt(message.created_at, now),
+      seen: names.length > 0,
+      seenBy: seenByText(names),
+    };
+  });
+}
+
+// Mis últimos mensajes, del más nuevo al más viejo. Se busca desde el final
+// y se corta al juntar los que hacen falta: no se recorre todo el historial.
+function lastOwnMessages(chat: ChatState): Message[] {
+  const own: Message[] = [];
+  for (let index = chat.messages.length - 1; index >= 0 && own.length < MAX_MY_MESSAGES; index--) {
+    const message = chat.messages[index];
+    if (message.sender_id === chat.me && OWN_TYPES.includes(message.type)) own.push(message);
+  }
+  return own;
 }
 
 // La hora si es de hoy; si no, alcanza con el día: "07:01", "Ayer", "16/11".

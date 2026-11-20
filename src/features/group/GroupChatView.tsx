@@ -1,6 +1,6 @@
-import { FlashList, type FlashListRef } from '@shopify/flash-list';
+import type { FlashListRef } from '@shopify/flash-list';
 import { useRef } from 'react';
-import { View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 
 import { useAutoDismiss } from '@/hooks/useAutoDismiss';
@@ -8,31 +8,18 @@ import { Banner } from '@/ui/Banner';
 import { ErrorNotice } from '@/ui/ErrorNotice';
 import { space } from '@/ui/theme';
 
-import { ActivityLine } from './ActivityLine';
 import { Composer } from './Composer';
-import { GroupRowView } from './GroupRowView';
 import { MentionSuggestions } from './MentionSuggestions';
-import type { DatoModel, GroupRow, GroupScreenModel, OpenTarget } from './model';
+import { MessageList } from './MessageList';
+import type { OpenTarget } from './model';
 import { NewMessagesPill } from './NewMessagesPill';
+import type { TimelineItem } from './timeline';
 import { useComposer } from './useComposer';
+import { useGroupChat } from './useGroupChat';
 
 type Props = {
-  model: GroupScreenModel;
-  /** Cuántos mensajes llegaron mientras se leía más arriba. */
-  newCount: number;
-  /** La lista está al final: lo que llegue se tiene que ver. */
-  atBottom: boolean;
-  /** La lista terminó de armarse por primera vez. Dice si abrió al final. */
-  onListReady: (openedAtEnd: boolean) => void;
-  onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  /** Abre en Campo lo que indica una tarjeta. */
   onOpen: (target: OpenTarget) => void;
-  /** `replyTo`: el mensaje al que se responde, si hay. */
-  onSend: (text: string, replyTo: number | null) => void;
-  /** Manda un audio: el texto de lo que se dijo y cuánto duró. */
-  onSendVoice: (text: string, durationMs: number, replyTo: number | null) => void;
-  onRetry: (localId: string) => void;
-  onComplete: (dato: DatoModel, values: Record<string, string>) => void;
-  onDismissNotice: () => void;
 };
 
 /** Cuánto dura un aviso abajo si nadie lo cierra, según la guía. */
@@ -41,33 +28,19 @@ const NOTICE_MS = 7000;
 /** Cuánto sigue la lista al final después de enviar algo. */
 const FOLLOW_AFTER_SEND_MS = 1000;
 
-// La lista del grupo y el composer. Abre parada en lo primero sin leer y no
-// se mueve sola mientras se lee más arriba.
-export function GroupChatView({
-  model,
-  newCount,
-  atBottom,
-  onScroll,
-  onListReady,
-  onOpen,
-  onSend,
-  onSendVoice,
-  onRetry,
-  onComplete,
-  onDismissNotice,
-}: Props) {
-  const listRef = useRef<FlashListRef<GroupRow>>(null);
-  const composer = useComposer(model.mentionOptions, { onSend, onSendVoice });
+// La lista del grupo, lo que flota sobre ella y el campo de texto.
+//
+// Escribir una letra vuelve a dibujar este componente, porque acá vive el
+// borrador. La lista no: está memoizada y recibe siempre lo mismo.
+export function GroupChatView({ onOpen }: Props) {
+  const chat = useGroupChat();
+  const composer = useComposer(chat.mentionOptions, { onSend: chat.sendText, onSendVoice: chat.sendVoice });
+  const listRef = useRef<FlashListRef<TimelineItem>>(null);
 
-  useAutoDismiss(model.notice !== null, onDismissNotice, NOTICE_MS);
+  useAutoDismiss(chat.notice !== null, chat.dismissNotice, NOTICE_MS);
 
   // Hasta cuándo la lista sigue al final porque acabo de mandar algo.
   const followUntil = useRef(0);
-
-  /** Si la lista ya estaba al final, la deja al final. Si se leía más arriba, no la mueve. */
-  function stayAtEnd(animated: boolean) {
-    if (atBottom || Date.now() < followUntil.current) listRef.current?.scrollToEnd({ animated });
-  }
 
   /** Lo que acabo de mandar tiene que verse: la lista baja hasta el final. */
   function showWhatISent() {
@@ -89,48 +62,34 @@ export function GroupChatView({
   return (
     // Cuando sale el teclado, la lista se achica y el composer queda arriba de él.
     <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-      {model.offlineNotice ? <Banner icon="wifi-off" title={model.offlineNotice.title} text={model.offlineNotice.text} /> : null}
+      {chat.offlineNotice ? <Banner icon="wifi-off" title={chat.offlineNotice.title} text={chat.offlineNotice.text} /> : null}
 
       <View style={{ flex: 1 }}>
-        <FlashList
-          ref={listRef}
-          data={model.rows}
-          // Recién cuando la lista terminó de armarse se empieza a mirar si está al final.
-          onLoad={() => onListReady(model.initialIndex === model.rows.length - 1)}
-          keyExtractor={(row) => row.key}
-          getItemType={(row) => row.kind}
-          renderItem={({ item }) => <GroupRowView row={item} onOpen={onOpen} onRetry={onRetry} onComplete={onComplete} onReply={composer.replyTo} />}
-          initialScrollIndex={model.initialIndex}
-          // La lista nunca baja por su cuenta: mantiene a la vista lo que se
-          // estaba leyendo aunque arriba o abajo cambie algo.
-          maintainVisibleContentPosition={{ autoscrollToBottomThreshold: 0 }}
-          // Solo si ya estaba al final sigue a lo que llega...
-          onContentSizeChange={() => stayAtEnd(true)}
-          // ...y lo mismo cuando la lista se achica: sale el teclado o aparece la cita.
-          onLayout={() => stayAtEnd(false)}
-          onScroll={onScroll}
-          scrollEventThrottle={64}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingTop: space[16] }}
-          ListFooterComponent={
-            <View style={{ paddingHorizontal: space[16], paddingBottom: space[12], gap: space[8] }}>
-              {model.activity.map((activity) => (
-                <ActivityLine key={activity.text} text={activity.text} slow={activity.slow} />
-              ))}
-            </View>
-          }
+        <MessageList
+          listRef={listRef}
+          items={chat.items}
+          initialIndex={chat.initialIndex}
+          atBottom={chat.atBottom}
+          followUntil={followUntil}
+          onListReady={chat.onListReady}
+          onScroll={chat.onScroll}
+          onLoadOlder={chat.loadOlder}
+          onOpen={onOpen}
+          onRetry={chat.retrySend}
+          onComplete={chat.completeDato}
+          onReply={composer.replyTo}
         />
 
         {/* Lo que flota sobre el final de la lista: el aviso o el botón de nuevos y,
             pegadas al campo de texto, las sugerencias. Así la lista no cambia de tamaño. */}
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, pointerEvents: 'box-none' }}>
-          {model.notice ? (
+          {chat.notice ? (
             <View style={{ marginHorizontal: space[16], marginBottom: space[12] }}>
-              <ErrorNotice message={model.notice} onClose={onDismissNotice} />
+              <ErrorNotice message={chat.notice} onClose={chat.dismissNotice} />
             </View>
-          ) : newCount > 0 ? (
+          ) : chat.newCount > 0 ? (
             <View style={{ alignSelf: 'flex-end', marginRight: space[16], marginBottom: space[12] }}>
-              <NewMessagesPill count={newCount} onPress={() => listRef.current?.scrollToEnd({ animated: true })} />
+              <NewMessagesPill count={chat.newCount} onPress={() => listRef.current?.scrollToEnd({ animated: true })} />
             </View>
           ) : null}
 

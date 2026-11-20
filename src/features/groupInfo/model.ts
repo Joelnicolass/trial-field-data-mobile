@@ -2,7 +2,7 @@
 // decisiones ya tomadas. Ningún componente tiene que saber de `watermark`,
 // de `seq` ni de fechas ISO. Lo arma `mappers.ts`.
 
-import type { AgentMode } from '@/server/mock-server';
+import type { AgentMode } from '@/domain/types';
 
 /** Un modo del agente. La pantalla solo lo pasa a quien lo cambia. */
 export type AgentModeKey = AgentMode;

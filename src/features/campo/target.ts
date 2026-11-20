@@ -4,7 +4,7 @@
 // dirección de la pantalla como textos, y Campo lo vuelve a leer para saber
 // en qué pestaña abrir, qué tarjeta mostrar y con qué filtro. Funciones puras.
 
-import type { Opens } from '@/server/mock-server';
+import type { Opens } from '@/domain/types';
 
 export type CampoSection = 'resumen' | 'animales';
 

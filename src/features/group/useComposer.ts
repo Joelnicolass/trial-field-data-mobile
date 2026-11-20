@@ -1,4 +1,4 @@
-import { useRef, useState, type ComponentRef } from 'react';
+import { useCallback, useRef, useState, type ComponentRef } from 'react';
 import type { TextInput } from 'react-native';
 
 import { applyMention, matchMentions, startMention } from './mentions';
@@ -24,6 +24,15 @@ export function useComposer(mentionOptions: MentionOption[], { onSend, onSendVoi
 
   // Las sugerencias salen del texto: se calculan al dibujar, no se guardan.
   const suggestions = matchMentions(mentionOptions, draft);
+
+  /**
+   * Empieza a responderle a un mensaje. Esta función la reciben los renglones
+   * de la lista: con `useCallback` es siempre la misma y no los redibuja.
+   */
+  const replyTo = useCallback((target: ReplyTarget) => {
+    setReplyingTo(target);
+    inputRef.current?.focus();
+  }, []);
 
   /** Manda lo escrito. Devuelve `false` si no había nada que mandar. */
   function submit(): boolean {
@@ -53,11 +62,7 @@ export function useComposer(mentionOptions: MentionOption[], { onSend, onSendVoi
       inputRef.current?.focus();
     },
     replyingTo,
-    /** Empieza a responderle a un mensaje. */
-    replyTo: (target: ReplyTarget) => {
-      setReplyingTo(target);
-      inputRef.current?.focus();
-    },
+    replyTo,
     cancelReply: () => setReplyingTo(null),
     submit,
     /** Manda un audio. No se grabó nada: sale una frase al azar de las que el agente entiende. */
