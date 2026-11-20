@@ -12,6 +12,7 @@ import {
   applyEvent,
   chatFromSnapshot,
   currentDatos,
+  dropActivity,
   dropExpiredTyping,
   endDatoSave,
   failDatoSave,
@@ -24,7 +25,17 @@ import {
   type Outgoing,
 } from '@/domain/chat';
 import data from '@/server/mock-data.json';
-import { completeDato, connect, loadChat, markRead, send, ServerError, type Dato, type ServerEvent } from '@/server/mock-server';
+import {
+  completeDato,
+  connect,
+  loadChat,
+  markRead,
+  send,
+  ServerError,
+  setOnline as setServerOnline,
+  type Dato,
+  type ServerEvent,
+} from '@/server/mock-server';
 
 type Status = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -48,6 +59,9 @@ type ChatStore = {
   /** El código de algo que hay que avisar abajo. `null` si no hay nada. */
   noticeCode: string | null;
   dismissNotice: () => void;
+  /** Si hay señal. Se cambia desde Opciones, para simular el corte. */
+  online: boolean;
+  setOnline: (online: boolean) => void;
 };
 
 // Errores en los que el dato ya está como tiene que estar: no hay nada que
@@ -98,6 +112,21 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   noticeCode: null,
   dismissNotice: () => set({ noticeCode: null }),
+
+  online: true,
+  setOnline: (online) => {
+    set({ online });
+    if (!online) updateChat(dropActivity);
+
+    // Al volver, el servidor entrega por la conexión abierta lo que se perdió.
+    setServerOnline(online);
+
+    // Y lo que no había salido se manda de nuevo, con su mismo identificador.
+    if (online) {
+      const failed = get().chat?.outbox.filter((item) => item.status === 'failed') ?? [];
+      failed.forEach(deliver);
+    }
+  },
 
   completeDato: async (datoId, version, values) => {
     const filled = withoutEmpty(values);

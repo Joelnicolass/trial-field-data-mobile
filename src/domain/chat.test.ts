@@ -4,6 +4,7 @@ import {
   applyEvent,
   chatFromSnapshot,
   currentDatos,
+  dropActivity,
   dropExpiredTyping,
   endDatoSave,
   failDatoSave,
@@ -93,6 +94,14 @@ describe('applyEvent', () => {
 
   it('guarda en qué está el agente', () => {
     expect(applyEvent(chat, { type: 'agent_status', status: 'slow' }, 0).agentStatus).toBe('slow');
+  });
+
+  it('al quedarse sin señal borra quién escribe y en qué anda el agente', () => {
+    const busy = applyEvent(applyEvent(chat, { type: 'typing', member_id: 'u_04' }, 1000), { type: 'agent_status', status: 'thinking' }, 1000);
+    const offline = dropActivity(busy);
+
+    expect(typingMembers(offline)).toEqual([]);
+    expect(offline.agentStatus).toBe('idle');
   });
 });
 

@@ -28,7 +28,7 @@ export default function GroupScreen() {
       <ScreenHeader
         title={model?.title ?? 'Grupo'}
         subtitle={model?.statusLine}
-        right={<IconButton icon="grid" accessibilityLabel="Ver los componentes" tint={color.sobreNavy} onPress={() => router.push('/catalogo')} />}
+        right={<IconButton icon="settings" accessibilityLabel="Opciones" tint={color.sobreNavy} onPress={() => router.push('/opciones')} />}
       />
 
       {model ? (

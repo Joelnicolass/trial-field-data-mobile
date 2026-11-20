@@ -173,8 +173,17 @@ describe('toGroupScreen', () => {
 
   it('avisa cuando otro completó el dato antes', () => {
     const chat = chatFromSnapshot({ id: 'g', name: 'Grupo', agent_mode: 'detect', me: 'u_01', members: [], messages: [], unsent: [], cursor: 0 });
-    expect(toGroupScreen(chat, {}, NOW, 'stale_version').notice).toBe('Alguien lo completó antes que vos. La tarjeta muestra cómo quedó.');
+    expect(toGroupScreen(chat, {}, NOW, { noticeCode: 'stale_version' }).notice).toBe('Alguien lo completó antes que vos. La tarjeta muestra cómo quedó.');
     expect(toGroupScreen(chat, {}, NOW).notice).toBeNull();
+  });
+
+  it('sin señal avisa qué pasa con lo que se mande', () => {
+    const chat = chatFromSnapshot({ id: 'g', name: 'Grupo', agent_mode: 'detect', me: 'u_01', members: [], messages: [], unsent: [], cursor: 0 });
+    expect(toGroupScreen(chat, {}, NOW, { online: false }).offlineNotice).toEqual({
+      title: 'Sin conexión',
+      text: 'Lo que mandes sale solo cuando vuelva la señal.',
+    });
+    expect(toGroupScreen(chat, {}, NOW).offlineNotice).toBeNull();
   });
 
   it('en una tabla, lo que falta sale como una raya', () => {

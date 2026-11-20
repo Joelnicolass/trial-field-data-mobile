@@ -25,6 +25,7 @@ export function useGroupScreen() {
   const completeDato = useChatStore((state) => state.completeDato);
   const noticeCode = useChatStore((state) => state.noticeCode);
   const dismissNotice = useChatStore((state) => state.dismissNotice);
+  const online = useChatStore((state) => state.online);
   const datos = useDatos();
   const now = useNow();
 
@@ -34,7 +35,10 @@ export function useGroupScreen() {
   }, [start]);
 
   // Se calcula al dibujar: no se guarda en otro estado.
-  const model = useMemo(() => (chat ? toGroupScreen(chat, datos, now, noticeCode) : null), [chat, datos, now, noticeCode]);
+  const model = useMemo(
+    () => (chat ? toGroupScreen(chat, datos, now, { noticeCode, online }) : null),
+    [chat, datos, now, noticeCode, online],
+  );
 
   // Si la pestaña del grupo está a la vista.
   const focused = useIsFocused();

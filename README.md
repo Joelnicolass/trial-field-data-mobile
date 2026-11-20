@@ -56,11 +56,16 @@ Otros comandos:
 - Arriba se ve quién está escribiendo y si el agente piensa o tarda.
 - Lo que dice una persona va en un globo. Lo que anota el agente va en una tarjeta a todo el ancho, sin globo.
 - Un dato al que le falta algo se completa desde su tarjeta, tocando una sugerencia o escribiendo el valor.
+- Sin señal, un aviso fijo lo dice. Lo que se manda queda sin enviar y sale solo cuando vuelve la señal, junto con lo que se había perdido.
 
 ### Los datos del campo
 
 - Stock por categoría, último tacto y lluvia de los últimos doce meses.
 - Lista de animales con búsqueda por caravana y filtro por categoría.
+
+### Opciones
+
+- El engranaje de la barra del grupo abre Opciones. Desde ahí se simula que no hay señal y se ven los componentes de la guía en una pantalla.
 
 ### Las dos juntas
 
@@ -98,6 +103,8 @@ Tres reglas sostienen el resto:
 - **Lo que mando lleva un identificador propio.** Aparece al instante, y la confirmación, que llega por dos caminos, se une por ese identificador. Reintentar usa el mismo, así que no duplica.
 - **Completar un dato pide elegir y después confirmar.** Es un toque más que guardar al tocar la sugerencia, pero evita guardar por error: en el campo se toca con el pulgar y a veces con guantes.
 - **Si otro completó el dato antes, no se reintenta.** Se avisa y la tarjeta muestra cómo quedó.
+- **Al volver la señal se manda de nuevo lo que no había salido.** Usa el mismo identificador, así que no duplica.
+- **Sin señal no se muestra quién escribe ni qué hace el agente.** Son avisos que ya no se pueden actualizar, y uno viejo confunde.
 - **La lista no baja sola.** Solo sigue a lo nuevo si ya estaba al final. Lo mismo cuando sale el teclado: si se leía más arriba, queda donde estaba.
 - **Responder es mantener apretado el mensaje.** Deslizarlo, como en WhatsApp, queda para cuando se sumen las animaciones.
 - **El número de "sin leer" no cambia mientras leo.** Lo que llega con el grupo abierto se cuenta aparte, como "nuevos".
@@ -139,11 +146,10 @@ No hay librería de gráficos ni kit de componentes: las barras de la lluvia y d
 ## Qué quedó afuera
 
 - **El micrófono.** El botón está, pero no hace nada.
-- **Quedarse sin señal.** Un envío que falla se puede reintentar, pero no hay un aviso de "sin conexión" ni una forma de simular el corte desde la app.
 - **Un dato eliminado.** Se muestra como "Eliminado", pero el servidor no trae ningún ejemplo y no se pudo probar.
 - **Los extras opcionales:** el detalle de un animal, la info del grupo y la versión web.
 
 ## Cómo se probó
 
-- 78 tests sobre las funciones puras del dominio y de los mappers: el orden, los repetidos, el envío, los datos, la lluvia, las menciones y los formatos.
+- 80 tests sobre las funciones puras del dominio y de los mappers: el orden, los repetidos, el envío, los datos, la lluvia, las menciones y los formatos.
 - A mano en Expo Go, en emuladores con Android 16 y con Android 11.
