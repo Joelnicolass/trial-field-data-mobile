@@ -2,6 +2,7 @@ import type { ChatSnapshot, Dato, Message } from '@/server/mock-server';
 
 import {
   applyEvent,
+  changeAgentMode,
   chatFromSnapshot,
   currentDatos,
   dropActivity,
@@ -103,6 +104,27 @@ describe('applyEvent', () => {
 
     expect(typingMembers(offline)).toEqual([]);
     expect(offline.agentStatus).toBe('idle');
+  });
+});
+
+describe('el modo del agente', () => {
+  const chat = chatFromSnapshot(snapshot);
+
+  it('arranca en el que dice el servidor', () => {
+    expect(chat.agentMode).toBe('detect');
+    expect(chatFromSnapshot({ ...snapshot, agent_mode: 'mention_only' }).agentMode).toBe('mention_only');
+  });
+
+  it('se cambia sin tocar nada más del grupo', () => {
+    const changed = changeAgentMode(chat, 'mention_only');
+
+    expect(changed).toEqual({ ...chat, agentMode: 'mention_only' });
+    // El estado anterior no se toca.
+    expect(chat.agentMode).toBe('detect');
+  });
+
+  it('elegir el modo en el que ya estaba devuelve el mismo estado', () => {
+    expect(changeAgentMode(chat, 'detect')).toBe(chat);
   });
 });
 

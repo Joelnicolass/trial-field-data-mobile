@@ -6,7 +6,7 @@
 // orden, tiene que dar el mismo resultado. El servidor entrega mensajes
 // tarde y repetidos, y con esa regla ninguno de los dos casos rompe nada.
 
-import type { AgentStatus, ChatSnapshot, Dato, DatoChange, Member, MemberId, Message, ServerEvent } from '@/server/mock-server';
+import type { AgentMode, AgentStatus, ChatSnapshot, Dato, DatoChange, Member, MemberId, Message, ServerEvent } from '@/server/mock-server';
 
 /** Cuánto dura un "escribiendo" si esa persona no manda nada. El servidor no avisa cuando termina. */
 export const TYPING_MS = 6000;
@@ -58,6 +58,8 @@ export type ChatState = {
   /** Quién está escribiendo: id del miembro → momento en que se apaga (ms). */
   typingUntil: Record<MemberId, number>;
   agentStatus: AgentStatus;
+  /** Cuándo anota el agente: apenas alguien cuenta un dato, o solo si lo mencionan. */
+  agentMode: AgentMode;
   /** Último `cursor` recibido. Si la conexión se corta, se retoma desde acá. */
   cursor: number;
 };
@@ -82,6 +84,7 @@ export function chatFromSnapshot(snapshot: ChatSnapshot, stored: Outgoing[] = []
     loadedUpToSeq: messages[messages.length - 1]?.seq ?? 0,
     typingUntil: {},
     agentStatus: 'idle',
+    agentMode: snapshot.agent_mode,
     cursor: snapshot.cursor,
   };
 }
@@ -165,6 +168,11 @@ export function markVoiceNote(state: ChatState, localId: string, durationMs: num
  */
 export function dropActivity(state: ChatState): ChatState {
   return { ...state, typingUntil: {}, agentStatus: 'idle' };
+}
+
+/** Cambia el modo del agente. Si ya estaba en ese, devuelve el mismo estado. */
+export function changeAgentMode(state: ChatState, mode: AgentMode): ChatState {
+  return state.agentMode === mode ? state : { ...state, agentMode: mode };
 }
 
 /**

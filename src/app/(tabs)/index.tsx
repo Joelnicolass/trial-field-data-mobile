@@ -28,7 +28,12 @@ export default function GroupScreen() {
       <ScreenHeader
         title={model?.title ?? 'Grupo'}
         subtitle={model?.statusLine}
-        right={<IconButton icon="settings" accessibilityLabel="Opciones" tint={color.sobreNavy} onPress={() => router.push('/opciones')} />}
+        right={
+          <View style={{ flexDirection: 'row' }}>
+            <IconButton icon="info" accessibilityLabel="Info del grupo" tint={color.sobreNavy} onPress={() => router.push('/info-grupo')} />
+            <IconButton icon="settings" accessibilityLabel="Opciones" tint={color.sobreNavy} onPress={() => router.push('/opciones')} />
+          </View>
+        }
       />
 
       {model ? (
