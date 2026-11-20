@@ -6,6 +6,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
+import { AppState } from 'react-native';
 import { create } from 'zustand';
 
 import { ApiError, chatApi, serverNow } from '@/api';
@@ -88,9 +89,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       startedAt = Date.now();
       set({ status: 'ready', chat: chatFromSnapshot(snapshot, stored) });
 
-      disconnect?.();
-      // `after_cursor` pide solo lo que pasó después de la carga.
-      disconnect = chatApi.connect(handleEvent, { after_cursor: snapshot.cursor });
+      openConnection();
+      watchAppState();
     } catch {
       set({ status: 'error' });
     }
@@ -120,15 +120,17 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   online: true,
   setOnline: (online) => {
     set({ online });
-    if (!online) updateChat(dropActivity);
-
-    // Al volver, el servidor entrega por la conexión abierta lo que se perdió.
     chatApi.setOnline(online);
 
-    // Y lo que no había salido se manda de nuevo, con su mismo identificador.
-    if (online) {
-      resendInOrder(get().chat?.outbox.filter((item) => item.status === 'failed') ?? []);
+    if (!online) {
+      closeConnection();
+      return;
     }
+
+    // Al volver se retoma desde el último evento recibido: llega lo que se perdió.
+    openConnection();
+    // Y lo que no había salido se manda de nuevo, con su mismo identificador.
+    resendInOrder(get().chat?.outbox.filter((item) => item.status === 'failed') ?? []);
   },
 
   setAgentMode: (mode) => {
@@ -185,6 +187,43 @@ async function deliver(outgoing: Omit<Outgoing, 'status'>) {
   } catch {
     updateChat((chat) => failOutgoing(chat, outgoing.localId));
   }
+}
+
+/**
+ * Abre la conexión pidiendo lo que pasó después del último evento que llegó
+ * (`cursor`). Es la misma función para la primera vez y para volver después
+ * de un corte: lo que se perdió llega por el camino de cualquier evento, y
+ * si algo viene repetido no cambia nada.
+ */
+function openConnection() {
+  const chat = useChatStore.getState().chat;
+  if (!chat) return;
+
+  disconnect?.();
+  disconnect = chatApi.connect(handleEvent, { after_cursor: chat.cursor });
+}
+
+/** Cierra la conexión. Quién escribe y qué hace el agente dejan de valer: ya no se pueden actualizar. */
+function closeConnection() {
+  disconnect?.();
+  disconnect = null;
+  updateChat(dropActivity);
+}
+
+let watchingAppState = false;
+
+// Con la app en segundo plano, el sistema termina cortando la conexión. Se
+// la cierra a propósito al salir y se la retoma desde el cursor al volver:
+// así el corte no depende de cuánto tarde el sistema en hacerlo.
+function watchAppState() {
+  if (watchingAppState) return;
+  watchingAppState = true;
+
+  AppState.addEventListener('change', (appState) => {
+    if (appState === 'background') closeConnection();
+    // Sin señal no se reabre: de eso se ocupa `setOnline` cuando vuelva.
+    if (appState === 'active' && disconnect === null && useChatStore.getState().online) openConnection();
+  });
 }
 
 /**
