@@ -17,6 +17,10 @@ type Props = {
   model: GroupScreenModel;
   /** Cuántos mensajes llegaron mientras se leía más arriba. */
   newCount: number;
+  /** La lista está al final: lo que llegue se tiene que ver. */
+  atBottom: boolean;
+  /** La lista terminó de armarse por primera vez. Dice si abrió al final. */
+  onListReady: (openedAtEnd: boolean) => void;
   onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   onOpen: (target: OpenTarget) => void;
   onSend: (text: string) => void;
@@ -30,7 +34,7 @@ const NOTICE_MS = 7000;
 
 // La lista del grupo y el composer. Abre parada en lo primero sin leer y no
 // se mueve sola mientras se lee más arriba.
-export function GroupChatView({ model, newCount, onScroll, onOpen, onSend, onRetry, onComplete, onDismissNotice }: Props) {
+export function GroupChatView({ model, newCount, atBottom, onScroll, onListReady, onOpen, onSend, onRetry, onComplete, onDismissNotice }: Props) {
   const listRef = useRef<FlashListRef<GroupRow>>(null);
   const [draft, setDraft] = useState('');
 
@@ -53,12 +57,19 @@ export function GroupChatView({ model, newCount, onScroll, onOpen, onSend, onRet
         <FlashList
           ref={listRef}
           data={model.rows}
+          // Recién cuando la lista terminó de armarse se empieza a mirar si está al final.
+          onLoad={() => onListReady(model.initialIndex === model.rows.length - 1)}
           keyExtractor={(row) => row.key}
           getItemType={(row) => row.kind}
           renderItem={({ item }) => <GroupRowView row={item} onOpen={onOpen} onRetry={onRetry} onComplete={onComplete} />}
           initialScrollIndex={model.initialIndex}
-          // Si está cerca del final, sigue a lo que llega. Si no, no se mueve.
-          maintainVisibleContentPosition={{ autoscrollToBottomThreshold: 0.2 }}
+          // La lista nunca baja por su cuenta: mantiene a la vista lo que se
+          // estaba leyendo aunque arriba o abajo cambie algo.
+          maintainVisibleContentPosition={{ autoscrollToBottomThreshold: 0 }}
+          // Solo si ya estaba al final sigue a lo que llega.
+          onContentSizeChange={() => {
+            if (atBottom) listRef.current?.scrollToEnd({ animated: true });
+          }}
           onScroll={onScroll}
           scrollEventThrottle={64}
           keyboardShouldPersistTaps="handled"

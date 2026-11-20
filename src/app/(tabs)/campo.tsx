@@ -1,38 +1,14 @@
-import { ScrollView, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { AnimalBrowser } from '@/features/campo/AnimalBrowser';
-import { PalpationCard } from '@/features/campo/PalpationCard';
-import { RainfallCard } from '@/features/campo/RainfallCard';
-import { StockCard } from '@/features/campo/StockCard';
-import { useCampoScreen, type CampoSection } from '@/features/campo/useCampoScreen';
-import { ScreenHeader } from '@/ui/ScreenHeader';
-import { SegmentedTabs } from '@/ui/SegmentedTabs';
-import { color, space } from '@/ui/theme';
+import { CampoView } from '@/features/campo/CampoView';
+import { paramsToTarget, type CampoParams } from '@/features/campo/target';
 
-const SECTIONS: { key: CampoSection; label: string }[] = [
-  { key: 'resumen', label: 'Resumen' },
-  { key: 'animales', label: 'Animales' },
-];
-
-// Los datos del campo: un resumen (stock, tacto y lluvia) y la lista de
-// animales. Recibe del hook un modelo listo y lo dibuja.
+// La pestaña Campo. Si se llegó tocando una tarjeta del grupo, la dirección
+// trae adónde abrir. `key` hace que cada visita arranque de cero: la pestaña,
+// el filtro y la búsqueda vuelven a lo que pide esa tarjeta, sin efectos.
 export default function CampoScreen() {
-  const screen = useCampoScreen();
+  const router = useRouter();
+  const target = paramsToTarget(useLocalSearchParams<CampoParams>());
 
-  return (
-    <View style={{ flex: 1, backgroundColor: color.fondo }}>
-      <ScreenHeader title={screen.header.title} titleLines={2} subtitle={screen.header.subtitle} />
-      <SegmentedTabs options={SECTIONS} value={screen.section} onChange={screen.setSection} />
-
-      {screen.section === 'resumen' ? (
-        <ScrollView contentContainerStyle={{ padding: space[16], gap: space[16] }}>
-          <StockCard stock={screen.stock} onSelectCategory={screen.openCategory} />
-          <PalpationCard palpation={screen.palpation} />
-          <RainfallCard rainfall={screen.rainfall} />
-        </ScrollView>
-      ) : (
-        <AnimalBrowser list={screen.animalList} />
-      )}
-    </View>
-  );
+  return <CampoView key={target.visit} target={target} onBack={() => router.navigate('/')} />;
 }

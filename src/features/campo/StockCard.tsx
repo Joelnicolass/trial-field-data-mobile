@@ -12,12 +12,14 @@ type Props = {
   stock: StockModel;
   /** Tocar una categoría lleva a sus animales. */
   onSelectCategory: (categoryId: number) => void;
+  /** Se llegó a esta tarjeta desde el grupo. */
+  highlighted?: boolean;
 };
 
 // Cuántos animales hay y cómo se reparten por categoría.
-export function StockCard({ stock, onSelectCategory }: Props) {
+export function StockCard({ stock, onSelectCategory, highlighted }: Props) {
   return (
-    <Card title="Stock">
+    <Card title="Stock" highlighted={highlighted}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space[8] }}>
         <AppText variant="h1" tone="tinta" tabular>
           {stock.total}

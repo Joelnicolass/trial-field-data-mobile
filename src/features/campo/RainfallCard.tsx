@@ -8,15 +8,17 @@ import type { RainBarModel, RainfallModel } from './model';
 
 type Props = {
   rainfall: RainfallModel;
+  /** Se llegó a esta tarjeta desde el grupo. */
+  highlighted?: boolean;
 };
 
 /** Alto, en puntos, de la barra del mes que más llovió. */
 const CHART_HEIGHT = 96;
 
 // Cuánto llovió mes a mes en el último año, y el total contra la media histórica.
-export function RainfallCard({ rainfall }: Props) {
+export function RainfallCard({ rainfall, highlighted }: Props) {
   return (
-    <Card title="Lluvia">
+    <Card title="Lluvia" highlighted={highlighted}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space[8] }}>
         <AppText variant="h1" tone="tinta" tabular>
           {rainfall.total}

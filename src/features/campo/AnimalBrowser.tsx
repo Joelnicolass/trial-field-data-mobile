@@ -39,6 +39,15 @@ export function AnimalBrowser({ list }: Props) {
           ))}
         </ScrollView>
 
+        {/* Los filtros con los que se llegó desde el grupo: a la vista, y se sacan tocándolos. */}
+        {list.extraFilters.length > 0 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[8], paddingHorizontal: space[16] }}>
+            {list.extraFilters.map((filter) => (
+              <Chip key={filter.key} label={`${filter.label}  ✕`} selected onPress={() => list.removeExtraFilter(filter.key)} />
+            ))}
+          </View>
+        ) : null}
+
         <AppText variant="caption" tone="secundario" tabular style={{ paddingHorizontal: space[16], paddingBottom: space[8] }}>
           {list.countLabel}
         </AppText>

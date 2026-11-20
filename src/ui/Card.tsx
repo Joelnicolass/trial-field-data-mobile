@@ -9,6 +9,8 @@ type Props = {
   title?: string;
   /** Si viene, toda la tarjeta se puede tocar. */
   onPress?: () => void;
+  /** La marca con el borde en teal: es a la que se vino a mirar. */
+  highlighted?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -22,7 +24,11 @@ const BASE: ViewStyle = {
   gap: space[8],
 };
 
-export function Card({ children, title, onPress, style }: Props) {
+// El borde resaltado es 1 px más ancho: se saca ese punto del relleno para
+// que lo de adentro no cambie de tamaño.
+const HIGHLIGHT: ViewStyle = { borderColor: color.teal, borderWidth: 2, padding: space[20] - 1 };
+
+export function Card({ children, title, onPress, highlighted = false, style }: Props) {
   const content = (
     <>
       {title ? (
@@ -34,10 +40,10 @@ export function Card({ children, title, onPress, style }: Props) {
     </>
   );
 
-  if (!onPress) return <View style={[BASE, style]}>{content}</View>;
+  if (!onPress) return <View style={[BASE, highlighted && HIGHLIGHT, style]}>{content}</View>;
 
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [BASE, style, pressed && { backgroundColor: color.inset }]}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [BASE, highlighted && HIGHLIGHT, style, pressed && { backgroundColor: color.inset }]}>
       {content}
     </Pressable>
   );
