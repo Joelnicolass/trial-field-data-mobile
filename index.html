@@ -83,16 +83,16 @@
   <h2>La idea en una pantalla</h2>
   <p>Hay una sola fuente de verdad, el estado del grupo, y las dos pestañas leen de ahí.</p>
   <div class="map">
-    <div><b>1. Servidor</b>Manda el historial y después eventos: mensajes, quién escribe, qué hace el agente.</div>
+    <div><b>1. Servidor</b>Manda el último tramo del historial, los datos y después eventos: mensajes, quién escribe, qué hace el agente.</div>
     <div><b>2. Una función</b>Recibe el estado y un evento, y devuelve el estado nuevo. No guarda nada por su cuenta.</div>
-    <div><b>3. Estado</b>Mensajes ordenados, miembros, quién escribe, el agente, hasta dónde leí.</div>
+    <div><b>3. Estado</b>Mensajes ordenados, datos, miembros, quién escribe, el agente, hasta dónde leí.</div>
     <div><b>4. Grupo</b>Dibuja el estado.</div>
     <div><b>5. Campo</b>Calcula sobre los datos del campo más lo anotado en el grupo.</div>
   </div>
   <h3>Tres criterios que resuelven casi todo</h3>
   <ul class="rules">
     <li><b>Mismo resultado siempre.</b> Aplicar un evento dos veces, o en otro orden, deja el estado igual.</li>
-    <li><b>Nada se copia.</b> Lo que se puede calcular (cómo está un dato, la lluvia del mes) se calcula al mostrarlo.</li>
+    <li><b>Nada se copia.</b> Lo que se puede calcular (la lluvia del mes, cuántos hay sin leer) se calcula al mostrarlo.</li>
     <li><b>Los datos mandan sobre el diseño.</b> No se asume cuántas categorías hay ni qué campos trae un dato: se dibuja lo que venga.</li>
   </ul>
 </section>
@@ -188,7 +188,7 @@
   <p>Un solo camino, siempre en la misma dirección. Cada capa hace una cosa y le pasa a la siguiente algo más simple.</p>
   <p class="arrow">Servidor → Datos → Mappers → Pantalla</p>
   <div class="pipe">
-    <div><b>1. Servidor</b><i>Lo que viene de afuera</i>Entrega el historial y después eventos. Sus datos vienen crudos: números sin formato, fechas ISO y <code>null</code> donde falta algo. No se modifica.</div>
+    <div><b>1. Servidor</b><i>Lo que viene de afuera</i>Entrega el historial por tramos y después eventos. Sus datos vienen crudos: números sin formato, fechas ISO y <code>null</code> donde falta algo. No se modifica.</div>
     <div><b>2. Datos</b><i>El estado, ordenado</i>Una función recibe el estado y un evento y devuelve el estado nuevo. Es la única puerta por la que cambia algo.</div>
     <div><b>3. Mappers</b><i>De datos a "qué mostrar"</i>Funciones puras que convierten el estado en lo que la pantalla necesita: textos ya escritos, en el orden en que van.</div>
     <div><b>4. Pantalla</b><i>Solo dibuja</i>Recibe todo listo. No sabe de fechas, unidades ni órdenes: pone cada texto en su lugar.</div>
@@ -197,11 +197,11 @@
   <h3>Dónde vive cada capa</h3>
   <table>
     <tr><th>Capa</th><th>Archivos</th></tr>
-    <tr><td>Servidor</td><td><code>src/server/mock-server.ts</code> y <code>mock-data.json</code>, tal como vienen.</td></tr>
-    <tr><td>Datos</td><td><code>src/domain/chat.ts</code> aplica los eventos, <code>src/domain/campo.ts</code> hace las cuentas del campo y <code>src/store/chatStore.ts</code> guarda el estado. Este último es el único que habla con el servidor.</td></tr>
+    <tr><td>Servidor</td><td><code>src/server/mock-server.ts</code> y <code>mock-data.json</code>, tal como vienen, detrás de una interfaz propia en <code>src/api/</code>. Solo esa carpeta los importa.</td></tr>
+    <tr><td>Datos</td><td><code>src/domain/chat.ts</code> aplica los eventos, <code>src/domain/campo.ts</code> hace las cuentas del campo y <code>src/store/chatStore.ts</code> guarda el estado. Este último es el único que habla con el servidor, a través de <code>src/api</code>. Los tipos del contrato están en <code>src/domain/types.ts</code>.</td></tr>
     <tr><td>Mappers</td><td><code>src/features/group/mappers.ts</code> y <code>src/features/campo/mappers.ts</code>.</td></tr>
-    <tr><td>Lo que espera la pantalla</td><td><code>model.ts</code>, uno por pestaña: es el contrato entre el mapper y los componentes.</td></tr>
-    <tr><td>Pantalla</td><td>Un hook por pestaña (<code>useGroupScreen</code>, <code>useCampoScreen</code>) que entrega el modelo, y los componentes que lo dibujan.</td></tr>
+    <tr><td>Lo que espera la pantalla</td><td><code>model.ts</code>, uno por pantalla: es el contrato entre el mapper y los componentes.</td></tr>
+    <tr><td>Pantalla</td><td>Los hooks entregan el modelo (<code>useGroupChat</code>, <code>useRowModel</code>, <code>useCampoScreen</code>) y los componentes lo dibujan. En el grupo, la barra, la lista y cada renglón se suscriben a lo suyo.</td></tr>
   </table>
 
   <h3>Los tres eventos</h3>
@@ -216,7 +216,7 @@
   <table>
     <tr><th>Cómo llega</th><th>Cómo queda guardado</th></tr>
     <tr><td>Mensajes en el orden en que se entregan, a veces tarde y a veces repetidos</td><td>Una lista ordenada por su número de orden, sin repetidos.</td></tr>
-    <tr><td>Un dato, y más tarde mensajes que lo cambian</td><td>Los mensajes, tal cual. Cómo está el dato ahora se calcula repasándolos en orden: no hay una segunda copia.</td></tr>
+    <tr><td>Un dato, y más tarde mensajes que lo cambian</td><td>Los mensajes, tal cual, y el dato como está ahora. Cuando llega un cambio se repasan, en orden, solo los mensajes de ese dato.</td></tr>
     <tr><td>"Escribiendo", sin aviso de fin</td><td>Quién escribe y hasta qué hora.</td></tr>
     <tr><td>Mi marca de lectura</td><td>Hasta dónde había leído al abrir, que no cambia mientras leo.</td></tr>
     <tr><td>Números, fechas y <code>null</code></td><td>Igual que llegan. El formato no se guarda: lo ponen los mappers.</td></tr>
@@ -263,7 +263,7 @@
 }</pre>
     </div>
   </div>
-  <p>La pantalla del grupo espera cinco cosas: el título, la línea de estado, los renglones en orden, en cuál abrir y lo que pasa ahora. Cada renglón dice de qué tipo es (día, sin leer, persona, dato, número, tabla, aviso) y trae sus textos ya escritos.</p>
+  <p>Cada parte de la pantalla del grupo recibe lo suyo. La barra, el título y la línea de estado. La lista, qué renglones hay y en cuál abrir. Cada renglón, su modelo: de qué tipo es (día, sin leer, persona, dato, número, tabla, aviso) y sus textos ya escritos. El pie, lo que pasa ahora.</p>
 
   <h3>Reglas para que sea predecible</h3>
   <ul class="rules">
@@ -278,7 +278,7 @@
   <h3>Si mañana cambia algo, qué se toca</h3>
   <table>
     <tr><th>Cambio</th><th>Dónde</th></tr>
-    <tr><td>Un servidor real en lugar del simulado</td><td>Solo la capa 1: el archivo que habla con el servidor.</td></tr>
+    <tr><td>Un servidor real en lugar del simulado</td><td>Otro adaptador en <code>src/api/</code>. El resto no cambia.</td></tr>
     <tr><td>Un tipo de mensaje nuevo</td><td>Un caso en el mapper y un componente que lo dibuja.</td></tr>
     <tr><td>Un dato con campos nuevos</td><td>Nada: los campos se dibujan por su tipo.</td></tr>
     <tr><td>Otro formato de fecha o de número</td><td>Un solo archivo de formatos.</td></tr>
@@ -289,7 +289,7 @@
 
 <section>
   <h2>Cómo se actualiza un solo renglón</h2>
-  <p>Cuando llega algo, la app cambia el renglón que corresponde y deja el resto como estaba. Así funciona en la rama <code>refactor/performance</code>; la versión 1.0.0 rearmaba la pantalla entera.</p>
+  <p>Cuando llega algo, la app cambia el renglón que corresponde y deja el resto como estaba. Así funciona desde la versión 1.0.1; la 1.0.0 rearmaba la pantalla entera.</p>
 
 <style>
   .rg-kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px; margin-top: 12px; }
@@ -394,7 +394,7 @@
         <div class="rg-count">Renglones redibujados: <b data-role="count">0</b> <span data-role="last"></span></div>
       </div>
       <div class="rg-panel" data-mode="ahora">
-        <div class="rg-panel-title"><b>Ahora</b><span>cada renglón mira lo suyo</span></div>
+        <div class="rg-panel-title"><b>Ahora</b><span>versión 1.0.1</span></div>
         <div class="rg-phone">
           <div class="rg-bar rg-part" data-part="header"><b>La Aurora · Hacienda</b><span data-role="status">5 integrantes</span></div>
           <div class="rg-list" data-role="list">
@@ -432,7 +432,7 @@
     <div><b>Solo sus mensajes</b>se repasan cuando cambia un dato, no todo el historial.</div>
     <div><b>Una docena</b>de renglones montados en pantalla, haya 100 mensajes o 20.000.</div>
   </div>
-  <p class="rg-note">Lo que todavía crece con el historial es la memoria, porque está todo cargado. Se resuelve trayéndolo por ventanas.</p>
+  <p class="rg-note">El historial se carga por tramos: al abrir llega lo último, con todo lo no leído, y lo anterior se trae al subir. Lo que falta es guardar lo cargado en el teléfono, que necesita un servidor que conserve su estado.</p>
 
 <script>
 (function () {
@@ -695,7 +695,9 @@
   <table>
     <tr><th>Evento</th><th>Qué hace la app con los datos</th><th>Qué se ve</th></tr>
     <tr><td colspan="3" class="group">Del servidor, al abrir</td></tr>
-    <tr><td>El grupo cargó</td><td>Ordena el historial, toma mi marca de lectura y deja como fallido lo que había quedado sin enviar.</td><td>La lista, abierta en lo primero sin leer.</td></tr>
+    <tr><td>El grupo cargó</td><td>Ordena el tramo que llegó, guarda los datos, toma mi marca de lectura y deja como fallido lo que había quedado sin enviar.</td><td>La lista, abierta en lo primero sin leer.</td></tr>
+    <tr><td>Llega una página anterior</td><td>Entra arriba, en orden y sin repetidos. Se repasan los datos que nombra.</td><td>Más mensajes arriba, sin mover lo que se lee.</td></tr>
+    <tr><td>Vuelve la conexión</td><td>Se reabre pidiendo lo que pasó después del último evento recibido. Después sale lo pendiente, en orden.</td><td>Llega lo que faltaba, cada cosa en su lugar.</td></tr>
     <tr><td>El grupo no cargó</td><td>Queda en estado de error.</td><td>"No pudimos cargar el contenido" y el botón Reintentar.</td></tr>
     <tr><td colspan="3" class="group">Del servidor, en vivo: mensajes</td></tr>
     <tr><td>Texto, audio o foto de una persona</td><td>Entra en su lugar por número de orden. Si ya estaba, se descarta. Quien escribía deja de escribir.</td><td>Un globo con nombre y rol; los míos, a la derecha.</td></tr>
@@ -731,7 +733,7 @@
   <div class="head"><span class="n">1</span><h2>Abrir el grupo</h2></div>
   <h3>Flujo</h3>
   <div class="flow">
-    <span class="step">Pedir el grupo</span><span class="step">Mostrar que carga</span><span class="step">Llega el historial</span>
+    <span class="step">Pedir el grupo</span><span class="step">Mostrar que carga</span><span class="step">Llega el último tramo</span>
     <span class="step">Calcular qué no leí</span><span class="step">Abrir en lo primero sin leer</span><span class="step">Conectarse a lo que llega</span>
   </div>
   <h3>Casos borde</h3>
@@ -750,7 +752,7 @@
   <h3>Flujo</h3>
   <div class="flow">
     <span class="step">Llega un evento</span><span class="step ask">¿Qué es?</span><span class="step">Aplicarlo al estado</span>
-    <span class="step">La lista se vuelve a dibujar</span><span class="step ask">¿Estoy al final?</span>
+    <span class="step">Se dibuja solo lo que cambió</span><span class="step ask">¿Estoy al final?</span>
   </div>
   <div class="branch">
     <div><b>Sí:</b> la lista sigue a lo nuevo y se marca como leído.</div>
@@ -760,7 +762,7 @@
   <table>
     <tr><th>Qué puede pasar</th><th>Qué hace la app</th></tr>
     <tr><td>Un mensaje llega tarde: el orden de llegada no es el de la conversación</td><td>Lo ubica por su número de orden (<code>seq</code>), no al final.</td></tr>
-    <tr><td>Un mensaje llega repetido</td><td>Lo descarta por su identificador.</td></tr>
+    <tr><td>Un mensaje llega repetido</td><td>Lo descarta: ya tiene uno con ese número de orden.</td></tr>
     <tr><td>Llega un mensaje que mandé yo</td><td>Reemplaza al que ya mostré como "enviándose".</td></tr>
     <tr><td>"Escribiendo" no avisa cuando termina</td><td>Se apaga solo a los 6 segundos, o cuando esa persona manda algo.</td></tr>
     <tr><td>Escriben dos a la vez</td><td>"Lucía y Mariano están escribiendo…".</td></tr>
@@ -829,7 +831,7 @@
   <h3>Casos borde</h3>
   <table>
     <tr><th>Qué puede pasar</th><th>Qué hace la app</th></tr>
-    <tr><td>Otro lo completó antes que yo</td><td>El servidor devuelve cómo quedó: se muestra eso y se avisa quién fue.</td></tr>
+    <tr><td>Otro lo completó antes que yo</td><td>Se avisa abajo. La tarjeta ya muestra cómo quedó, y la línea dice quién fue.</td></tr>
     <tr><td>El valor no sirve para ese campo</td><td>Se marca el campo, con qué pasó y qué hacer.</td></tr>
     <tr><td>Mandé lo mismo que ya tenía</td><td>No hay nada que guardar.</td></tr>
     <tr><td>No hay señal</td><td>Lo elegido no se pierde y se puede reintentar.</td></tr>
@@ -868,7 +870,7 @@
   <table>
     <tr><th>Qué puede pasar</th><th>Qué hace la app</th></tr>
     <tr><td>La tarjeta no lleva a ningún lado</td><td>No se puede tocar y no muestra el link.</td></tr>
-    <tr><td>Lleva a un animal</td><td>Su detalle o, si no está hecho, la lista con solo ese animal.</td></tr>
+    <tr><td>Lleva a un animal</td><td>Abre su detalle, apilado sobre el grupo.</td></tr>
     <tr><td>Se anota una lluvia en el grupo</td><td>Cuenta en el total de su mes.</td></tr>
     <tr><td>Después la corrigen</td><td>Cuenta el valor nuevo, sin hacer nada: el total se calcula al mostrarlo.</td></tr>
     <tr><td>La lluvia está incompleta</td><td>No cuenta hasta que alguien la complete.</td></tr>
@@ -883,7 +885,7 @@
   </div>
   <div class="branch">
     <div><b>Resumen:</b> stock por categoría, último tacto y lluvia mes a mes.</div>
-    <div><b>Animales:</b> buscar por caravana y filtrar por categoría.</div>
+    <div><b>Animales:</b> buscar por caravana, filtrar por categoría y abrir el detalle de uno.</div>
   </div>
   <h3>Casos borde</h3>
   <table>
@@ -904,7 +906,7 @@
   <h3>Flujo</h3>
   <div class="flow">
     <span class="step">Se corta</span><span class="step">Se avisa que no hay conexión</span><span class="step">Lo que escribo queda pendiente</span>
-    <span class="step">Vuelve</span><span class="step">Llega lo que me perdí</span><span class="step">Reintento lo pendiente</span>
+    <span class="step">Vuelve</span><span class="step">Llega lo que me perdí</span><span class="step">Sale lo pendiente, en orden</span>
   </div>
   <h3>Casos borde</h3>
   <table>
@@ -1029,13 +1031,15 @@
     <tr><td colspan="2" class="group">Al abrir, sin tocar nada: los primeros 30 segundos</td></tr>
     <tr><td>Abrir el grupo</td><td>Queda parado en "7 mensajes sin leer". El último de esos nombra a Héctor y lleva una barra azul. Al final hay un mensaje tuyo que no salió: "No se envió · Reintentar".</td></tr>
     <tr><td>A los 5 segundos</td><td>Llega un mensaje de Ramón. La lista no se mueve y aparece el botón "1 nuevo".</td></tr>
-    <tr><td>A los 8 segundos</td><td>Mariano corrige una lluvia. La tarjeta "Lluvia" que ya estaba, arriba de lo no leído, pasa de 23 a 25 mm, y queda una línea que lo dice.</td></tr>
+    <tr><td>A los 8 segundos</td><td>Mariano corrige una lluvia. Queda una línea que lo dice, y la tarjeta "Lluvia" de más arriba pasa de 23 a 25 mm. Para verla hay que subir.</td></tr>
     <tr><td>A los 14 segundos</td><td>Llegan Lucía y Mariano casi juntos. El de Mariano llega después, pero queda arriba del de Lucía: se ordena por su número, no por la llegada.</td></tr>
     <tr><td>A los 17 segundos</td><td>Lucía completa la vacunación. La tarjeta "Falta un dato" pasa a "Guardado" sin que la toques.</td></tr>
     <tr><td>A los 19 segundos</td><td>El servidor manda repetido el mensaje de Lucía. No aparece dos veces.</td></tr>
     <tr><td>A los 22 segundos</td><td>Mariano le pregunta al agente. Arriba dice "El agente está pensando…" y responde con un texto y la tarjeta "Stock · 411 cabezas".</td></tr>
     <tr><td>A los 27 segundos</td><td>"Ramón está escribiendo…" y nunca manda nada: se apaga solo a los 6 segundos.</td></tr>
     <tr><td>Tocar el botón de nuevos</td><td>Baja al final. Recién ahí queda todo como leído.</td></tr>
+    <tr><td>Subir hasta arriba de todo</td><td>Se cargan solos los mensajes anteriores, sin mover lo que estabas leyendo.</td></tr>
+    <tr><td>Mandar la app al fondo unos segundos y volver</td><td>Llega junto lo que pasó mientras tanto, cada cosa en su lugar.</td></tr>
     <tr><td colspan="2" class="group">Escribir un dato</td></tr>
     <tr><td><code>llovieron 18 mm</code></td><td>El agente anota "Lluvia · 18 mm · Guardado". Tocá "Ver en el campo": abre Campo con la lluvia resaltada, y noviembre pasó de 66 a 84 mm. La flecha de arriba vuelve al grupo, que está como lo dejaste.</td></tr>
     <tr><td><code>vacunamos 20 terneros</code></td><td>El agente arma "Vacunación · Falta un dato" y pide la vacuna. Tocá una sugerencia y "Completar": pasa a "Guardado" y queda una línea que dice que la completaste vos.</td></tr>
@@ -1053,7 +1057,7 @@
     <tr><td colspan="2" class="group">Quedarse sin señal</td></tr>
     <tr><td>Engranaje → "Simular que no hay señal"</td><td>Al volver al grupo hay un aviso fijo, "Sin conexión", y deja de llegar todo.</td></tr>
     <tr><td>Mandar cualquier mensaje</td><td>Queda en "No se envió · Reintentar".</td></tr>
-    <tr><td>Apagar el interruptor</td><td>Llega lo que te perdiste y lo pendiente sale solo.</td></tr>
+    <tr><td>Apagar el interruptor</td><td>Llega lo que te perdiste y lo pendiente sale solo, en el orden en que lo escribiste.</td></tr>
     <tr><td colspan="2" class="group">Info del grupo</td></tr>
     <tr><td>Botón de información, en la barra del grupo</td><td>Los integrantes con su rol, el modo del agente y quién vio tus mensajes.</td></tr>
     <tr><td>Elegir "Si lo mencionan" y mandar <code>llovieron 9 mm</code></td><td>El agente no anota nada. Volvé a "Anota solo" para seguir con la demo.</td></tr>
