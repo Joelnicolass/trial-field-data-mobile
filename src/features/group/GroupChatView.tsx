@@ -4,6 +4,7 @@ import { View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-n
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 
 import { useAutoDismiss } from '@/hooks/useAutoDismiss';
+import { Banner } from '@/ui/Banner';
 import { ErrorNotice } from '@/ui/ErrorNotice';
 import { space } from '@/ui/theme';
 
@@ -57,6 +58,8 @@ export function GroupChatView({ model, newCount, atBottom, onScroll, onListReady
   return (
     // Cuando sale el teclado, la lista se achica y el composer queda arriba de él.
     <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+      {model.offlineNotice ? <Banner icon="wifi-off" title={model.offlineNotice.title} text={model.offlineNotice.text} /> : null}
+
       <View style={{ flex: 1 }}>
         <FlashList
           ref={listRef}

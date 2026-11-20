@@ -148,6 +148,15 @@ export function dropExpiredTyping(state: ChatState, now: number): ChatState {
 }
 
 /**
+ * Borra quién escribe y en qué anda el agente. Se usa al quedarse sin señal:
+ * esos avisos ya no se pueden actualizar, y uno viejo confunde. Al volver, el
+ * servidor manda de nuevo el estado del agente.
+ */
+export function dropActivity(state: ChatState): ChatState {
+  return { ...state, typingUntil: {}, agentStatus: 'idle' };
+}
+
+/**
  * Suma un mensaje a la lista, en su lugar según `seq`.
  *
  * El servidor entrega en orden de llegada (`cursor`), que no es el de la

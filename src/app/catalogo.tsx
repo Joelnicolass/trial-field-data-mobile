@@ -4,6 +4,7 @@ import { ScrollView, View } from 'react-native';
 
 import { useAutoDismiss } from '@/hooks/useAutoDismiss';
 import { AppText } from '@/ui/AppText';
+import { Banner } from '@/ui/Banner';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
@@ -11,7 +12,9 @@ import { EmptyState } from '@/ui/EmptyState';
 import { ErrorNotice } from '@/ui/ErrorNotice';
 import { IconButton } from '@/ui/IconButton';
 import { KeyValueRow } from '@/ui/KeyValueRow';
+import { LinkRow } from '@/ui/LinkRow';
 import { ScreenHeader } from '@/ui/ScreenHeader';
+import { SwitchRow } from '@/ui/SwitchRow';
 import { Tag } from '@/ui/Tag';
 import { TextField } from '@/ui/TextField';
 import { color, space } from '@/ui/theme';
@@ -19,12 +22,13 @@ import { color, space } from '@/ui/theme';
 const CATEGORIES = ['Todas', 'Vacas', 'Terneros', 'Toros'];
 
 // Todas las piezas genéricas en una pantalla, para verlas y ajustarlas.
-// No es parte de la app: se llega desde un link en la pestaña Grupo.
+// No es parte de la app: se llega desde Opciones.
 export default function CatalogScreen() {
   const router = useRouter();
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [search, setSearch] = useState('');
   const [noticeVisible, setNoticeVisible] = useState(false);
+  const [switchOn, setSwitchOn] = useState(false);
 
   // El aviso de error dura 7 segundos, como pide la guía.
   useAutoDismiss(noticeVisible, () => setNoticeVisible(false), 7000);
@@ -119,6 +123,17 @@ export default function CatalogScreen() {
         <Section title="Aviso de error">
           <Button label="Mostrar el aviso" variant="outlined" onPress={() => setNoticeVisible(true)} />
           {noticeVisible ? <ErrorNotice message="No se pudo enviar el mensaje." onClose={() => setNoticeVisible(false)} /> : null}
+        </Section>
+
+        <Section title="Aviso fijo">
+          <Banner icon="wifi-off" title="Sin conexión" text="Lo que mandes sale solo cuando vuelva la señal." />
+        </Section>
+
+        <Section title="Filas de opciones">
+          <Card>
+            <SwitchRow label="Simular que no hay señal" description="Qué cambia al prenderlo." value={switchOn} onValueChange={setSwitchOn} />
+            <LinkRow icon="grid" label="Componentes" description="Adónde lleva, en una línea." onPress={() => {}} />
+          </Card>
         </Section>
       </ScrollView>
     </View>

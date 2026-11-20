@@ -140,4 +140,6 @@ export type GroupScreenModel = {
   notice: string | null;
   /** A quién se puede mencionar: todos menos yo. */
   mentionOptions: MentionOption[];
+  /** El aviso de que no hay señal, ya escrito. `null` cuando hay. */
+  offlineNotice: { title: string; text: string } | null;
 };

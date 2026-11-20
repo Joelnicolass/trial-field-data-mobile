@@ -37,12 +37,21 @@ type Context = {
   messagesBySeq: Map<number, Message>;
 };
 
-/**
- * Toda la pantalla del grupo, lista para dibujar.
- *
- * @param noticeCode El código de algo que hay que avisar abajo, si hay.
- */
-export function toGroupScreen(chat: ChatState, datos: Record<string, Dato>, now: string, noticeCode: string | null = null): GroupScreenModel {
+/** Lo que la pantalla necesita saber además del grupo. */
+type ScreenOptions = {
+  /** El código de algo que hay que avisar abajo, si hay. */
+  noticeCode?: string | null;
+  /** Si hay señal. */
+  online?: boolean;
+};
+
+/** Toda la pantalla del grupo, lista para dibujar. */
+export function toGroupScreen(
+  chat: ChatState,
+  datos: Record<string, Dato>,
+  now: string,
+  { noticeCode = null, online = true }: ScreenOptions = {},
+): GroupScreenModel {
   const context: Context = {
     chat,
     now,
@@ -67,8 +76,12 @@ export function toGroupScreen(chat: ChatState, datos: Record<string, Dato>, now:
     activity: toActivity(chat),
     notice: noticeCode ? (NOTICE[noticeCode] ?? null) : null,
     mentionOptions: toMentionOptions(chat),
+    offlineNotice: online ? null : OFFLINE_NOTICE,
   };
 }
+
+// Qué pasa y qué va a pasar con lo que se mande, como pide la guía para los errores.
+const OFFLINE_NOTICE = { title: 'Sin conexión', text: 'Lo que mandes sale solo cuando vuelva la señal.' };
 
 // A quién puedo mencionar: todos menos yo. El agente va primero, porque es a
 // quien más se le pregunta.
