@@ -19,7 +19,7 @@
   header { background: var(--navy); color: var(--sobre-navy); padding: 24px 16px; }
   header h1 { margin: 0 0 4px; font-size: 24px; line-height: 1.2; color: #fff; }
   header p { margin: 0; max-width: 70ch; }
-  main { max-width: 980px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
   section { background: var(--superficie); border: 1px solid var(--divisor); border-radius: 8px; padding: 20px; }
   h2 { margin: 0; font-size: 18px; line-height: 1.3; color: var(--tinta); }
   h3 { margin: 20px 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--secundario); }
@@ -289,137 +289,269 @@
 
 <section>
   <h2>Cómo se actualiza un solo renglón</h2>
-  <p>Cuando llega algo, la app no rearma la lista: cambia el renglón que corresponde y deja el resto como estaba. Así funciona en la rama <code>refactor/performance</code>. La versión 1.0.0 armaba la pantalla entera con cada evento.</p>
+  <p>Cuando llega algo, la app cambia el renglón que corresponde y deja el resto como estaba. Así funciona en la rama <code>refactor/performance</code>; la versión 1.0.0 rearmaba la pantalla entera.</p>
+
+<style>
+  .rg-kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px; margin-top: 12px; }
+  .rg-kind { display: grid; grid-template-columns: 1fr 150px; gap: 12px; align-items: center; background: var(--fondo); border: 1px solid var(--divisor); border-radius: 8px; padding: 10px 12px; }
+  .rg-label b { display: block; color: var(--tinta); font-size: 13px; line-height: 1.3; }
+  .rg-label code { display: inline-block; margin-top: 4px; background: var(--superficie); border: 1px solid var(--divisor); }
+  .rg-sample, .rg-row { font-size: 12px; line-height: 1.35; }
+  .rg-day { text-align: center; color: var(--secundario); font-weight: 600; }
+  .rg-who { color: var(--cuerpo); font-weight: 600; font-size: 11px; margin-bottom: 2px; }
+  .rg-bubble { display: inline-block; background: var(--superficie); border: 1px solid var(--divisor); border-radius: 8px; padding: 6px 8px; color: var(--tinta); }
+  .rg-mine { background: #D0E6F6; border-color: #D0E6F6; }
+  .rg-agent { color: var(--teal); font-weight: 600; font-size: 11px; margin-bottom: 2px; }
+  .rg-card { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--superficie); border: 1px solid var(--divisor); border-radius: 8px; padding: 8px; color: var(--tinta); }
+  .rg-tag { font-size: 10px; font-weight: 600; color: var(--falta); background: var(--falta-fondo); border: 1px solid var(--falta); border-radius: 5px; padding: 1px 5px; white-space: nowrap; }
+  .rg-value { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .rg-line { text-align: center; color: var(--secundario); }
+  .rg-unread { text-align: center; color: var(--primario); font-weight: 600; border-top: 1px solid var(--divisor); padding-top: 4px; }
+  .rg-failed { color: #D32F2F; font-weight: 600; font-size: 11px; margin-top: 2px; }
+  .rg-kind .rg-sample:has(.rg-mine) { text-align: right; }
+
+  .rg-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .rg-buttons button { font: inherit; font-weight: 600; min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--primario); background: var(--primario); color: #fff; cursor: pointer; }
+  .rg-buttons button:hover { background: var(--navy); }
+  .rg-buttons button.rg-reset { background: var(--superficie); color: var(--primario); }
+  .rg-state { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; }
+  .rg-node { border: 1.5px solid var(--divisor); border-radius: 8px; padding: 6px 10px; color: var(--secundario); background: var(--superficie); font-weight: 600; transition: all .2s; }
+  .rg-node.rg-on { border-color: var(--teal); color: #fff; background: var(--teal); }
+  .rg-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 12px; }
+  .rg-panel-title { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+  .rg-panel-title b { color: var(--tinta); }
+  .rg-panel-title span { font-size: 12px; color: var(--secundario); }
+  .rg-phone { border: 1px solid var(--divisor); border-radius: 12px; overflow: hidden; background: var(--fondo); }
+  .rg-bar { background: var(--navy); color: var(--sobre-navy); padding: 8px 12px; font-size: 12px; line-height: 1.3; }
+  .rg-bar b { display: block; color: #fff; }
+  .rg-list { height: 260px; overflow-y: auto; padding: 10px 12px; display: grid; gap: 8px; align-content: start; }
+  .rg-row { border-radius: 8px; padding: 2px; }
+  .rg-row.rg-own { text-align: right; }
+  .rg-composer { background: var(--superficie); border-top: 1px solid var(--divisor); padding: 8px 12px; }
+  .rg-draft { display: block; background: var(--inset); border: 1px solid var(--divisor); border-radius: 8px; padding: 6px 10px; font-size: 12px; color: var(--secundario); }
+  .rg-draft.rg-typed { color: var(--tinta); }
+  .rg-count { margin-top: 8px; font-size: 13px; }
+  .rg-count b { font-size: 20px; color: var(--tinta); font-variant-numeric: tabular-nums; }
+  .rg-count span { color: var(--secundario); }
+  @keyframes rg-flash { from { box-shadow: 0 0 0 3px rgba(216, 67, 21, .95); } to { box-shadow: 0 0 0 3px rgba(216, 67, 21, 0); } }
+  .rg-hit { animation: rg-flash .9s ease-out; }
+  .rg-legend { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--secundario); }
+  .rg-legend i { width: 14px; height: 14px; border-radius: 4px; box-shadow: 0 0 0 3px rgba(216, 67, 21, .95); margin: 0 4px; }
+
+  .rg-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px 24px; margin-top: 12px; }
+  .rg-chart h4 { margin: 0 0 6px; font-size: 13px; color: var(--tinta); }
+  .rg-meter { display: grid; grid-template-columns: 44px 1fr 70px; align-items: center; gap: 8px; font-size: 12px; margin-top: 4px; }
+  .rg-meter b { color: var(--tinta); font-variant-numeric: tabular-nums; text-align: right; }
+  .rg-track { background: var(--inset); border: 1px solid var(--divisor); border-radius: 5px; height: 16px; overflow: hidden; }
+  .rg-track i { display: block; height: 100%; }
+  .rg-before { background: var(--falta); }
+  .rg-after { background: var(--ok); }
+  .rg-note { font-size: 12px; color: var(--secundario); }
+</style>
 
   <h3>Qué es un renglón</h3>
-  <p>Es cada elemento de la lista del grupo: lo que ocupa una fila de pantalla y se dibuja por separado. No es solo un mensaje.</p>
-  <table>
-    <tr><th>Clase de renglón</th><th>Qué se ve</th></tr>
-    <tr><td>Mensaje de una persona</td><td>Un globo con nombre y rol. Los míos, a la derecha.</td></tr>
-    <tr><td>Mensaje del agente</td><td>Una tarjeta a todo el ancho: un dato, un número, una tabla o un texto.</td></tr>
-    <tr><td>Aviso</td><td>Una línea centrada: "Mariano corrigió la lluvia: 23 → 25 mm".</td></tr>
-    <tr><td>Separador de día</td><td>"Hoy", "Ayer" o la fecha.</td></tr>
-    <tr><td>Separador de no leídos</td><td>"7 mensajes sin leer".</td></tr>
-    <tr><td>Mensaje mío que no salió</td><td>Mi globo, con "enviándose" o "No se envió · Reintentar".</td></tr>
-  </table>
-  <p>En el código, cada renglón pasa por tres formas, una por capa:</p>
-  <table>
-    <tr><th>Capa</th><th>Nombre en el código</th><th>Qué es</th></tr>
-    <tr><td>Datos</td><td><code>TimelineItem</code></td><td>Qué renglón es y de dónde sale: su clave y la referencia al mensaje. No dice cómo se dibuja.</td></tr>
-    <tr><td>Mappers</td><td><code>GroupRow</code></td><td>Su modelo: los textos ya escritos, la hora con formato, la cita resumida.</td></tr>
-    <tr><td>Pantalla</td><td><code>TimelineRow</code> y <code>GroupRowView</code></td><td>El componente que se suscribe a lo suyo y el que dibuja.</td></tr>
-  </table>
-
-  <h3>Cómo se identifica</h3>
-  <p>Cada renglón tiene una clave que no cambia mientras exista. Con ella la lista sabe cuál es cuál entre un dibujo y el siguiente, aunque entren renglones antes o después.</p>
-  <table>
-    <tr><th>Renglón</th><th>Su clave</th><th>De dónde sale</th></tr>
-    <tr><td>Un mensaje</td><td><code>m_108</code></td><td>El identificador que le pone el servidor.</td></tr>
-    <tr><td>Separador de día</td><td><code>day-2026-11-18</code></td><td>El día.</td></tr>
-    <tr><td>Separador de no leídos</td><td><code>unread</code></td><td>Hay uno solo.</td></tr>
-    <tr><td>Mensaje mío que no salió</td><td><code>local-b7e1…</code></td><td>El identificador que le puso la app al enviarlo.</td></tr>
-  </table>
-
-  <h3>Cómo se dibuja solo ese</h3>
-  <p>Un ejemplo: Mariano corrige una lluvia de 23 a 25 mm. Las cajas punteadas son lo que no cambia.</p>
-  <div class="tree-wrap">
-<svg viewBox="0 0 896 220" width="896" height="220" role="img" aria-label="Qué cambia cuando llega la corrección de una lluvia: un renglón nuevo y una tarjeta; el resto no se toca" style="display:block;font-family:Inter,system-ui,sans-serif">
-<text x="1" y="16" font-size="12" font-weight="600" fill="#697586" letter-spacing=".08em">EVENTO</text>
-<text x="237" y="16" font-size="12" font-weight="600" fill="#697586" letter-spacing=".08em">ESTADO</text>
-<text x="473" y="16" font-size="12" font-weight="600" fill="#697586" letter-spacing=".08em">LO QUE MIRA CADA RENGLÓN</text>
-<text x="709" y="16" font-size="12" font-weight="600" fill="#697586" letter-spacing=".08em">PANTALLA</text>
-<path d="M187 119.0 C212.0 119.0,212.0 57.0,237 57.0" fill="none" stroke="#243552" stroke-opacity=".45" stroke-width="1.5"/>
-<path d="M187 119.0 C212.0 119.0,212.0 119.0,237 119.0" fill="none" stroke="#243552" stroke-opacity=".45" stroke-width="1.5"/>
-<path d="M423 57.0 C448.0 57.0,448.0 57.0,473 57.0" fill="none" stroke="#115293" stroke-opacity=".45" stroke-width="1.5"/>
-<path d="M423 119.0 C448.0 119.0,448.0 119.0,473 119.0" fill="none" stroke="#115293" stroke-opacity=".45" stroke-width="1.5"/>
-<path d="M659 57.0 C684.0 57.0,684.0 57.0,709 57.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
-<path d="M659 119.0 C684.0 119.0,684.0 119.0,709 119.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
-<path d="M659 181.0 C684.0 181.0,684.0 181.0,709 181.0" fill="none" stroke="#0077AD" stroke-opacity=".45" stroke-width="1.5"/>
-<rect x="1" y="96.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#243552" stroke-width="1.5"/>
-<text x="13" y="115.0" font-size="13" font-weight="600" fill="#121926">Llega un mensaje</text>
-<text x="13" y="131.0" font-size="12" fill="#697586">Mariano corrigió la lluvia</text>
-<rect x="237" y="34.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#115293" stroke-width="1.5"/>
-<text x="249" y="53.0" font-size="13" font-weight="600" fill="#121926">Mensajes</text>
-<text x="249" y="69.0" font-size="12" fill="#697586">se suma uno, en su lugar</text>
-<rect x="237" y="96.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#115293" stroke-width="1.5"/>
-<text x="249" y="115.0" font-size="13" font-weight="600" fill="#121926">Datos</text>
-<text x="249" y="131.0" font-size="12" fill="#697586">cambia solo la lluvia</text>
-<rect x="237" y="158.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#115293" stroke-width="1.5" stroke-dasharray="4 3"/>
-<text x="249" y="177.0" font-size="13" font-weight="600" fill="#121926">Escribiendo y agente</text>
-<text x="249" y="193.0" font-size="12" fill="#697586">no cambia</text>
-<rect x="473" y="34.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#0077AD" stroke-width="1.5"/>
-<text x="485" y="53.0" font-size="13" font-weight="600" fill="#121926">Lista de claves</text>
-<text x="485" y="69.0" font-size="12" fill="#697586">una clave nueva al final</text>
-<rect x="473" y="96.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#0077AD" stroke-width="1.5"/>
-<text x="485" y="115.0" font-size="13" font-weight="600" fill="#121926">Tarjeta de la lluvia</text>
-<text x="485" y="131.0" font-size="12" fill="#697586">su dato es otro objeto</text>
-<rect x="473" y="158.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#0077AD" stroke-width="1.5" stroke-dasharray="4 3"/>
-<text x="485" y="177.0" font-size="13" font-weight="600" fill="#121926">Los otros renglones</text>
-<text x="485" y="193.0" font-size="12" fill="#697586">miran lo mismo que antes</text>
-<rect x="709" y="34.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#1C8300" stroke-width="1.5"/>
-<text x="721" y="53.0" font-size="13" font-weight="600" fill="#121926">Renglón nuevo</text>
-<text x="721" y="69.0" font-size="12" fill="#697586">se arma y se dibuja</text>
-<rect x="709" y="96.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#1C8300" stroke-width="1.5"/>
-<text x="721" y="115.0" font-size="13" font-weight="600" fill="#121926">Tarjeta de la lluvia</text>
-<text x="721" y="131.0" font-size="12" fill="#697586">se redibuja con 25 mm</text>
-<rect x="709" y="158.0" width="186" height="46" rx="8" fill="#FFFFFF" stroke="#1C8300" stroke-width="1.5" stroke-dasharray="4 3"/>
-<text x="721" y="177.0" font-size="13" font-weight="600" fill="#121926">Todo lo demás</text>
-<text x="721" y="193.0" font-size="12" fill="#697586">React lo saltea</text>
-</svg>
+  <p>Cada fila de la lista del grupo. Hay seis clases, y cada una tiene una clave que no cambia: con ella la lista sabe cuál es cuál.</p>
+  <div class="rg-kinds">
+    <div class="rg-kind"><div class="rg-sample"><div class="rg-day">Hoy</div></div><div class="rg-label"><b>Separador de día</b><code>day-2026-11-18</code></div></div>
+    <div class="rg-kind"><div class="rg-sample"><div class="rg-who">Ramón · peón</div><div class="rg-bubble">vacuné 8 vaquillonas</div></div><div class="rg-label"><b>Mensaje de una persona</b><code>m_108</code></div></div>
+    <div class="rg-kind"><div class="rg-sample"><div class="rg-agent">Agente</div><div class="rg-card"><b>Vacunación</b><span class="rg-tag">Falta un dato</span></div></div><div class="rg-label"><b>Mensaje del agente</b><code>m_109</code></div></div>
+    <div class="rg-kind"><div class="rg-sample"><div class="rg-line">✎ Mariano corrigió la lluvia: 23 → 25 mm</div></div><div class="rg-label"><b>Aviso</b><code>m_116</code></div></div>
+    <div class="rg-kind"><div class="rg-sample"><div class="rg-unread">7 mensajes sin leer</div></div><div class="rg-label"><b>Separador de no leídos</b><code>unread</code></div></div>
+    <div class="rg-kind"><div class="rg-sample"><div class="rg-bubble rg-mine">@agente cuántos terneros hay</div><div class="rg-failed">No se envió · Reintentar</div></div><div class="rg-label"><b>Mensaje mío que no salió</b><code>local-b7e1…</code></div></div>
   </div>
-  <ul class="rules">
-    <li><b>El evento cambia solo su parte del estado.</b> Se suma un mensaje y cambia un dato. Quién escribe, lo pendiente y los demás datos siguen siendo los mismos objetos.</li>
-    <li><b>La lista recibe claves, no renglones armados.</b> Suma la clave nueva al final. Los elementos que ya estaban son los mismos de antes, uno por uno.</li>
-    <li><b>Cada renglón mira solo lo suyo.</b> Le pregunta al estado por su mensaje, el que cita, su dato y su guardado. Si le devuelven lo mismo que la vez anterior, no hace nada.</li>
-    <li><b>El que cambió arma su modelo de nuevo y se redibuja.</b> A los demás React los saltea, porque reciben exactamente lo mismo que antes.</li>
-  </ul>
-  <p>Qué mira cada clase de renglón:</p>
-  <table>
-    <tr><th>Renglón</th><th>Qué mira del estado</th></tr>
-    <tr><td>Globo de una persona</td><td>Su mensaje, el mensaje que cita y, si es mío, si lo mandé como audio.</td></tr>
-    <tr><td>Tarjeta de un dato</td><td>Su mensaje, cómo está ahora ese dato y si lo estoy guardando.</td></tr>
-    <tr><td>Número, tabla o aviso</td><td>Su mensaje. No cambia nunca.</td></tr>
-    <tr><td>Mensaje mío que no salió</td><td>Su envío, que cambia al pasar de "enviándose" a "falló", y el mensaje que cita.</td></tr>
-    <tr><td>Separadores</td><td>Nada que cambie.</td></tr>
-  </table>
-  <p>La barra de arriba y el pie de la lista se suscriben por su cuenta a quién escribe y a qué hace el agente. El borrador del campo de texto es estado local suyo. Ninguno de los tres pasa por la lista.</p>
+
+  <h3>Probalo: qué se redibuja con cada evento</h3>
+  <p>Las dos listas reciben lo mismo. Tocá un evento y mirá cuál se marca en naranja.</p>
+  <div id="rg-demo">
+    <div class="rg-buttons">
+      <button type="button" data-event="mensaje">Llega un mensaje</button>
+      <button type="button" data-event="dato">Cambia un dato</button>
+      <button type="button" data-event="escribe">Alguien escribe</button>
+      <button type="button" data-event="letra">Escribo una letra</button>
+      <button type="button" data-event="reset" class="rg-reset">Reiniciar</button>
+    </div>
+    <div class="rg-state">
+      <span>Parte del estado que cambia:</span>
+      <span class="rg-node" data-node="mensajes">Mensajes</span>
+      <span class="rg-node" data-node="datos">Datos</span>
+      <span class="rg-node" data-node="escribiendo">Escribiendo</span>
+      <span class="rg-node" data-node="borrador">Borrador del campo de texto</span>
+    </div>
+    <div class="rg-panels">
+      <div class="rg-panel" data-mode="antes">
+        <div class="rg-panel-title"><b>Antes</b><span>versión 1.0.0</span></div>
+        <div class="rg-phone">
+          <div class="rg-bar rg-part" data-part="header"><b>La Aurora · Hacienda</b><span data-role="status">5 integrantes</span></div>
+          <div class="rg-list" data-role="list">
+            <div class="rg-row"><div class="rg-day">Hoy</div></div>
+            <div class="rg-row"><div class="rg-who">Ramón · peón</div><div class="rg-bubble">llovieron 23 anoche</div></div>
+            <div class="rg-row" data-row="rain"><div class="rg-agent">Agente</div><div class="rg-card"><b>Lluvia</b><span class="rg-value" data-role="rain">23 mm</span></div></div>
+            <div class="rg-row"><div class="rg-who">Ramón · peón</div><div class="rg-bubble">vacuné 8 vaquillonas</div></div>
+            <div class="rg-row"><div class="rg-agent">Agente</div><div class="rg-card"><b>Vacunación</b><span class="rg-tag">Falta un dato</span></div></div>
+          </div>
+          <div class="rg-composer rg-part" data-part="composer"><span data-role="draft" class="rg-draft">Escribí un mensaje</span></div>
+        </div>
+        <div class="rg-count">Renglones redibujados: <b data-role="count">0</b> <span data-role="last"></span></div>
+      </div>
+      <div class="rg-panel" data-mode="ahora">
+        <div class="rg-panel-title"><b>Ahora</b><span>cada renglón mira lo suyo</span></div>
+        <div class="rg-phone">
+          <div class="rg-bar rg-part" data-part="header"><b>La Aurora · Hacienda</b><span data-role="status">5 integrantes</span></div>
+          <div class="rg-list" data-role="list">
+            <div class="rg-row"><div class="rg-day">Hoy</div></div>
+            <div class="rg-row"><div class="rg-who">Ramón · peón</div><div class="rg-bubble">llovieron 23 anoche</div></div>
+            <div class="rg-row" data-row="rain"><div class="rg-agent">Agente</div><div class="rg-card"><b>Lluvia</b><span class="rg-value" data-role="rain">23 mm</span></div></div>
+            <div class="rg-row"><div class="rg-who">Ramón · peón</div><div class="rg-bubble">vacuné 8 vaquillonas</div></div>
+            <div class="rg-row"><div class="rg-agent">Agente</div><div class="rg-card"><b>Vacunación</b><span class="rg-tag">Falta un dato</span></div></div>
+          </div>
+          <div class="rg-composer rg-part" data-part="composer"><span data-role="draft" class="rg-draft">Escribí un mensaje</span></div>
+        </div>
+        <div class="rg-count">Renglones redibujados: <b data-role="count">0</b> <span data-role="last"></span></div>
+      </div>
+    </div>
+    <div class="rg-legend"><i></i> se volvió a dibujar. Es una simulación: muestra el comportamiento, no mide.</div>
+  </div>
 
   <h3>Por qué es óptimo</h3>
-  <p>Porque se hace el trabajo de lo que cambió, y nada más.</p>
-  <table>
-    <tr><th>Qué pasa</th><th>Qué se recalcula</th><th>Qué se redibuja</th></tr>
-    <tr><td>Llega un mensaje</td><td>La lista suma una clave</td><td>Un renglón nuevo</td></tr>
-    <tr><td>Cambia un dato</td><td>El modelo de esa tarjeta</td><td>Esa tarjeta</td></tr>
-    <tr><td>Alguien escribe</td><td>El texto de la barra</td><td>La barra y el pie de la lista</td></tr>
-    <tr><td>Escribo una letra</td><td>Nada</td><td>El campo de texto</td></tr>
-  </table>
-  <p>Cuánto se dibujaba antes de este cambio y cuánto ahora:</p>
-  <table>
-    <tr><th>Medido en Android 11, en Expo Go</th><th>Antes</th><th>Ahora</th></tr>
-    <tr><td>Renglones dibujados en los 30 segundos del guion, sin tocar nada</td><td>187</td><td>13</td></tr>
-    <tr><td>Renglones redibujados al escribir diez letras</td><td>84</td><td>0</td></tr>
-  </table>
-  <ul class="rules">
-    <li><b>No se arma lo que no cambió.</b> Formatear una hora, resumir una cita o armar una tarjeta se hace una vez por renglón, no una vez por evento.</li>
-    <li><b>No se compara lo que no cambió.</b> Un renglón sin cambios recibe los mismos objetos, y React decide que no hay nada que hacer sin mirar adentro.</li>
-    <li><b>Escribir no toca la lista.</b> La lista está memoizada y recibe siempre las mismas funciones.</li>
-  </ul>
+  <p>Se hace el trabajo de lo que cambió, y nada más. Medido en Android 11, en Expo Go:</p>
+  <div class="rg-charts">
+<div class="rg-chart"><h4>Renglones dibujados en 30 segundos, sin tocar nada</h4><div class="rg-meter"><span>Antes</span><div class="rg-track"><i class="rg-before" style="width:100.0%"></i></div><b>187</b></div><div class="rg-meter"><span>Ahora</span><div class="rg-track"><i class="rg-after" style="width:7.0%"></i></div><b>13</b></div></div>
+<div class="rg-chart"><h4>Renglones redibujados al escribir diez letras</h4><div class="rg-meter"><span>Antes</span><div class="rg-track"><i class="rg-before" style="width:44.9%"></i></div><b>84</b></div><div class="rg-meter"><span>Ahora</span><div class="rg-track"><i class="rg-after" style="width:0.0%"></i></div><b>0</b></div></div>
+  </div>
 
   <h3>Por qué escala</h3>
-  <p>Porque el costo de un evento depende de lo que cambió, no del largo del historial. Lo que cuesta procesar un mensaje nuevo, medido en una computadora (un teléfono es varias veces más lento, pero la proporción es la misma):</p>
-  <table>
-    <tr><th>Mensajes en el historial</th><th>Antes</th><th>Ahora</th></tr>
-    <tr><td>500</td><td>0,56 ms</td><td>0,015 ms</td></tr>
-    <tr><td>5.000</td><td>4,3 ms</td><td>0,045 ms</td></tr>
-    <tr><td>20.000</td><td>19,2 ms</td><td>0,185 ms</td></tr>
-  </table>
-  <ul class="rules">
-    <li><b>Buscar un mensaje no recorre la lista.</b> Está ordenada por su número, así que se busca partiéndola por la mitad: con veinte mil mensajes se miran quince.</li>
-    <li><b>Sumar un mensaje al final suma un renglón.</b> Los que ya estaban ni se miran. Solo si un mensaje llega tarde y entra en el medio se arma la lista de nuevo.</li>
-    <li><b>El cambio de un dato repasa solo los mensajes de ese dato.</b> El original y sus cambios, en orden. Por eso el resultado no depende del orden en que llegaron.</li>
-    <li><b>En pantalla hay siempre una docena de renglones.</b> La lista monta lo que se ve, haya cien mensajes o veinte mil.</li>
-  </ul>
-  <p>Lo que todavía crece con el historial: la memoria, porque está todo cargado, y copiar la lista de referencias cada vez que se suma un mensaje. Las dos cosas se resuelven trayendo el historial por ventanas, que necesita un servidor que pagine.</p>
+  <p>El costo de un mensaje nuevo ya no depende del largo del historial. Medido en una computadora:</p>
+  <div class="rg-charts">
+<div class="rg-chart"><h4>Con 500 mensajes</h4><div class="rg-meter"><span>Antes</span><div class="rg-track"><i class="rg-before" style="width:2.9%"></i></div><b>0,56 ms</b></div><div class="rg-meter"><span>Ahora</span><div class="rg-track"><i class="rg-after" style="width:0.6%"></i></div><b>0,015 ms</b></div></div>
+<div class="rg-chart"><h4>Con 5.000 mensajes</h4><div class="rg-meter"><span>Antes</span><div class="rg-track"><i class="rg-before" style="width:22.4%"></i></div><b>4,3 ms</b></div><div class="rg-meter"><span>Ahora</span><div class="rg-track"><i class="rg-after" style="width:0.6%"></i></div><b>0,045 ms</b></div></div>
+<div class="rg-chart"><h4>Con 20.000 mensajes</h4><div class="rg-meter"><span>Antes</span><div class="rg-track"><i class="rg-before" style="width:100.0%"></i></div><b>19,2 ms</b></div><div class="rg-meter"><span>Ahora</span><div class="rg-track"><i class="rg-after" style="width:1.0%"></i></div><b>0,185 ms</b></div></div>
+  </div>
+  <div class="map">
+    <div><b>15 comparaciones</b>para encontrar un mensaje entre 20.000: la lista está ordenada y se busca por mitades.</div>
+    <div><b>1 renglón</b>se suma cuando llega un mensaje. Los que ya estaban ni se miran.</div>
+    <div><b>Solo sus mensajes</b>se repasan cuando cambia un dato, no todo el historial.</div>
+    <div><b>Una docena</b>de renglones montados en pantalla, haya 100 mensajes o 20.000.</div>
+  </div>
+  <p class="rg-note">Lo que todavía crece con el historial es la memoria, porque está todo cargado. Se resuelve trayéndolo por ventanas.</p>
+
+<script>
+(function () {
+  var demo = document.getElementById('rg-demo');
+  if (!demo) return;
+
+  var panels = Array.prototype.slice.call(demo.querySelectorAll('.rg-panel'));
+  var nodes = Array.prototype.slice.call(demo.querySelectorAll('.rg-node'));
+  var initial = panels.map(function (panel) { return panel.querySelector('[data-role="list"]').innerHTML; });
+  var arrivals = [
+    ['Lucía · veterinaria', 'Fue la reproductiva, ya la completo'],
+    ['Mariano · encargado', 'Gracias Ramón'],
+    ['Ramón · peón', 'listo el bebedero'],
+    ['Lucía · veterinaria', 'el lunes paso a revisar']
+  ];
+  var phrase = 'hola a todos';
+  var state;
+
+  function reset() {
+    state = { rain: 23, arrived: 0, typed: 0, counts: { antes: 0, ahora: 0 } };
+    panels.forEach(function (panel, index) {
+      panel.querySelector('[data-role="list"]').innerHTML = initial[index];
+      panel.querySelector('[data-role="count"]').textContent = '0';
+      panel.querySelector('[data-role="last"]').textContent = '';
+      panel.querySelector('[data-role="status"]').textContent = '5 integrantes';
+      var draft = panel.querySelector('[data-role="draft"]');
+      draft.textContent = 'Escribí un mensaje';
+      draft.classList.remove('rg-typed');
+    });
+    light([]);
+  }
+
+  // Marca en naranja lo que se volvió a dibujar.
+  function flash(element) {
+    element.classList.remove('rg-hit');
+    void element.offsetWidth;
+    element.classList.add('rg-hit');
+  }
+
+  function light(names) {
+    nodes.forEach(function (node) { node.classList.toggle('rg-on', names.indexOf(node.getAttribute('data-node')) >= 0); });
+  }
+
+  function addRow(panel, html, own) {
+    var list = panel.querySelector('[data-role="list"]');
+    var row = document.createElement('div');
+    row.className = 'rg-row' + (own ? ' rg-own' : '');
+    row.innerHTML = html;
+    list.appendChild(row);
+    list.scrollTop = list.scrollHeight;
+    return row;
+  }
+
+  // changed: lo que cambió de verdad en ese panel. parts: la barra o el campo de texto.
+  function redraw(panel, changed, parts) {
+    var mode = panel.getAttribute('data-mode');
+    var rows = Array.prototype.slice.call(panel.querySelectorAll('.rg-row'));
+    // Antes se redibujaban todos los renglones con cualquier evento. Ahora, solo los que cambiaron.
+    var drawn = mode === 'antes' ? rows : changed;
+    drawn.forEach(flash);
+    parts.forEach(function (name) { flash(panel.querySelector('[data-part="' + name + '"]')); });
+    state.counts[mode] += drawn.length;
+    panel.querySelector('[data-role="count"]').textContent = String(state.counts[mode]);
+    panel.querySelector('[data-role="last"]').textContent = '(último: +' + drawn.length + ')';
+  }
+
+  var events = {
+    mensaje: function () {
+      var arrival = arrivals[state.arrived % arrivals.length];
+      state.arrived += 1;
+      light(['mensajes']);
+      panels.forEach(function (panel) {
+        var row = addRow(panel, '<div class="rg-who">' + arrival[0] + '</div><div class="rg-bubble">' + arrival[1] + '</div>');
+        redraw(panel, [row], []);
+      });
+    },
+    dato: function () {
+      var before = state.rain;
+      state.rain += 2;
+      light(['mensajes', 'datos']);
+      panels.forEach(function (panel) {
+        panel.querySelector('[data-role="rain"]').textContent = state.rain + ' mm';
+        var line = addRow(panel, '<div class="rg-line">✎ Mariano corrigió la lluvia: ' + before + ' → ' + state.rain + ' mm</div>');
+        redraw(panel, [panel.querySelector('[data-row="rain"]'), line], []);
+      });
+    },
+    escribe: function () {
+      light(['escribiendo']);
+      panels.forEach(function (panel) {
+        var status = panel.querySelector('[data-role="status"]');
+        status.textContent = 'Ramón está escribiendo…';
+        setTimeout(function () { status.textContent = '5 integrantes'; }, 2500);
+        redraw(panel, [], ['header']);
+      });
+    },
+    letra: function () {
+      state.typed = state.typed >= phrase.length ? 1 : state.typed + 1;
+      light(['borrador']);
+      panels.forEach(function (panel) {
+        var draft = panel.querySelector('[data-role="draft"]');
+        draft.textContent = phrase.slice(0, state.typed);
+        draft.classList.add('rg-typed');
+        redraw(panel, [], ['composer']);
+      });
+    }
+  };
+
+  demo.addEventListener('click', function (event) {
+    var button = event.target.closest('button[data-event]');
+    if (!button) return;
+    var name = button.getAttribute('data-event');
+    if (name === 'reset') reset();
+    else events[name]();
+  });
+
+  reset();
+})();
+</script>
+
 </section>
 
 
