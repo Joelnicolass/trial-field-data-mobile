@@ -10,5 +10,13 @@ export default function CampoScreen() {
   const router = useRouter();
   const target = paramsToTarget(useLocalSearchParams<CampoParams>());
 
-  return <CampoView key={target.visit} target={target} onBack={() => router.navigate('/')} />;
+  return (
+    <CampoView
+      key={target.visit}
+      target={target}
+      onBack={() => router.navigate('/')}
+      // El detalle se apila encima: al volver, la lista está como se la dejó.
+      onOpenAnimal={(id) => router.push({ pathname: '/animal/[id]', params: { id } })}
+    />
+  );
 }
