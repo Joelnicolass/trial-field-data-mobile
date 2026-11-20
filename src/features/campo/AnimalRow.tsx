@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import type { Animal } from '@/domain/campo';
 import { formatQuantity, MISSING } from '@/domain/format';
 import { AppText } from '@/ui/AppText';
+import { Icon } from '@/ui/Icon';
 import { Tag } from '@/ui/Tag';
 import { color, space } from '@/ui/theme';
 
@@ -28,6 +29,8 @@ export function AnimalRow({ animal }: Props) {
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[8] }}>
+        {/* El ícono de etiqueta dice que el número es la caravana, sin sumar texto. */}
+        <Icon name="tag" size={14} tint={color.secundario} />
         {animal.identifier ? (
           <AppText variant="h4" tone="tinta" tabular>
             {animal.identifier}
