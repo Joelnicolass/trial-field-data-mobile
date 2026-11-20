@@ -144,7 +144,7 @@ function toRow(item: TimelineItem, previous: TimelineItem | undefined, context: 
     mentionsMe: message.mentions.includes(context.chat.me),
     time: formatTime(message.created_at),
     quote: toQuote(message, context),
-    body: toPersonBody(message),
+    body: toPersonBody(message, context.chat.voiceNotes),
     delivery: isMine ? 'sent' : null,
     localId: null,
     reply: toReplyTarget(message, context),
@@ -162,7 +162,7 @@ function toOutgoingRow(outgoing: Outgoing, context: Context): GroupRow {
     mentionsMe: false,
     time: formatTime(outgoing.createdAt),
     quote: quoted ? toQuoteOf(quoted, context) : null,
-    body: { kind: 'text', text: outgoing.text },
+    body: toOwnBody(outgoing.text, context.chat.voiceNotes[outgoing.localId]),
     delivery: outgoing.status,
     localId: outgoing.localId,
     // Todavía no tiene número de orden: no se le puede responder.
@@ -172,7 +172,11 @@ function toOutgoingRow(outgoing: Outgoing, context: Context): GroupRow {
 
 // ── Personas ───────────────────────────────────────────────────────────────
 
-function toPersonBody(message: Message): PersonBody {
+function toPersonBody(message: Message, voiceNotes: ChatState['voiceNotes']): PersonBody {
+  // Lo que mandé como audio vuelve del servidor como texto: acá recupera su forma.
+  const voiceMs = message.local_id ? voiceNotes[message.local_id] : undefined;
+  if (voiceMs !== undefined) return toOwnBody(message.text ?? '', voiceMs);
+
   if (message.type === 'audio') {
     return { kind: 'audio', duration: formatDuration(message.duration_ms ?? 0), transcript: message.transcript ?? null };
   }
@@ -183,6 +187,12 @@ function toPersonBody(message: Message): PersonBody {
     return { kind: 'photo', color: photo.color, aspectRatio, description: photo.description, caption: message.text };
   }
   return { kind: 'text', text: message.text ?? '' };
+}
+
+/** Lo mío: un audio con lo que dije si lo grabé, o el texto. */
+function toOwnBody(text: string, voiceMs: number | undefined): PersonBody {
+  if (voiceMs === undefined) return { kind: 'text', text };
+  return { kind: 'audio', duration: formatDuration(voiceMs), transcript: text };
 }
 
 /** El mensaje al que responde este, resumido en una línea. */

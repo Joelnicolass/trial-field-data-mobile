@@ -3,15 +3,21 @@ import type { TextInput } from 'react-native';
 
 import { applyMention, matchMentions, startMention } from './mentions';
 import type { MentionOption, ReplyTarget } from './model';
+import { pickPhrase } from './voice';
+
+/** Cómo sale lo que se escribe o se graba. `replyTo` es el mensaje citado, si hay. */
+type Senders = {
+  onSend: (text: string, replyTo: number | null) => void;
+  onSendVoice: (text: string, durationMs: number, replyTo: number | null) => void;
+};
 
 /**
  * Lo que se está escribiendo en el grupo: el texto, a quién se menciona y a
  * qué mensaje se responde. La pantalla solo dibuja lo que este hook devuelve.
  *
  * @param mentionOptions A quién se puede mencionar.
- * @param onSend Manda el texto. `replyTo` es el mensaje citado, si hay.
  */
-export function useComposer(mentionOptions: MentionOption[], onSend: (text: string, replyTo: number | null) => void) {
+export function useComposer(mentionOptions: MentionOption[], { onSend, onSendVoice }: Senders) {
   const [draft, setDraft] = useState('');
   const [replyingTo, setReplyingTo] = useState<ReplyTarget | null>(null);
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
@@ -50,5 +56,10 @@ export function useComposer(mentionOptions: MentionOption[], onSend: (text: stri
     },
     cancelReply: () => setReplyingTo(null),
     submit,
+    /** Manda un audio. No se grabó nada: sale una frase al azar de las que el agente entiende. */
+    submitVoice: (durationMs: number) => {
+      onSendVoice(pickPhrase(Math.random()), durationMs, replyingTo?.seq ?? null);
+      setReplyingTo(null);
+    },
   };
 }

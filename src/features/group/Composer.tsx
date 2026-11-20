@@ -7,14 +7,16 @@ import { TextField } from '@/ui/TextField';
 import { color, space, toqueMinimo } from '@/ui/theme';
 
 import type { QuoteModel } from './model';
+import { RecordingBar } from './RecordingBar';
 import { ReplyQuote } from './ReplyQuote';
+import { useVoiceRecorder } from './useVoiceRecorder';
 
 type Props = {
   value: string;
   onChangeText: (text: string) => void;
   onSend: () => void;
-  /** Con el campo vacío, el botón es el micrófono. */
-  onMic: () => void;
+  /** Manda el audio que se acaba de grabar. `durationMs`: cuánto duró. */
+  onSendVoice: (durationMs: number) => void;
   /** Suma una "@" para mencionar a alguien. */
   onMention: () => void;
   /** El mensaje al que se está respondiendo, si hay. */
@@ -24,9 +26,12 @@ type Props = {
   inputRef?: RefObject<ComponentRef<typeof TextInput> | null>;
 };
 
-// Donde se escribe. Solo dibuja: qué se manda y a quién lo decide la pantalla.
-export function Composer({ value, onChangeText, onSend, onMic, onMention, replyingTo, onCancelReply, inputRef }: Props) {
+// Donde se escribe. Con el campo vacío, el botón es el micrófono: al tocarlo
+// la barra de grabación ocupa el lugar del campo de texto. Qué se manda y a
+// quién lo decide la pantalla.
+export function Composer({ value, onChangeText, onSend, onSendVoice, onMention, replyingTo, onCancelReply, inputRef }: Props) {
   const hasText = value.trim() !== '';
+  const recorder = useVoiceRecorder();
 
   return (
     <View
@@ -48,28 +53,38 @@ export function Composer({ value, onChangeText, onSend, onMic, onMention, replyi
         </View>
       ) : null}
 
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space[4] }}>
-        <IconButton icon="at-sign" accessibilityLabel="Mencionar a alguien" tint={color.secundario} onPress={onMention} />
-        <View style={{ flex: 1 }}>
-          <TextField ref={inputRef} placeholder="Escribí un mensaje" value={value} onChangeText={onChangeText} multiline />
+      {recorder.recording ? (
+        <RecordingBar
+          elapsed={recorder.elapsed}
+          levels={recorder.levels}
+          dotOn={recorder.dotOn}
+          onCancel={recorder.cancel}
+          onSend={() => onSendVoice(recorder.finish())}
+        />
+      ) : (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space[4] }}>
+          <IconButton icon="at-sign" accessibilityLabel="Mencionar a alguien" tint={color.secundario} onPress={onMention} />
+          <View style={{ flex: 1 }}>
+            <TextField ref={inputRef} placeholder="Escribí un mensaje" value={value} onChangeText={onChangeText} multiline />
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={hasText ? 'Enviar' : 'Grabar un audio'}
+            onPress={hasText ? onSend : recorder.start}
+            style={({ pressed }) => ({
+              width: toqueMinimo,
+              height: toqueMinimo,
+              borderRadius: toqueMinimo / 2,
+              marginLeft: space[4],
+              backgroundColor: pressed ? color.primarioOscuroHover : color.primarioOscuro,
+              alignItems: 'center',
+              justifyContent: 'center',
+            })}
+          >
+            <Icon name={hasText ? 'send' : 'mic'} size={20} tint={color.superficie} />
+          </Pressable>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={hasText ? 'Enviar' : 'Grabar un audio'}
-          onPress={hasText ? onSend : onMic}
-          style={({ pressed }) => ({
-            width: toqueMinimo,
-            height: toqueMinimo,
-            borderRadius: toqueMinimo / 2,
-            marginLeft: space[4],
-            backgroundColor: pressed ? color.primarioOscuroHover : color.primarioOscuro,
-            alignItems: 'center',
-            justifyContent: 'center',
-          })}
-        >
-          <Icon name={hasText ? 'send' : 'mic'} size={20} tint={color.superficie} />
-        </Pressable>
-      </View>
+      )}
     </View>
   );
 }

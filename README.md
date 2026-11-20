@@ -52,6 +52,7 @@ Otros comandos:
 - Se puede escribir y enviar. Cada mensaje mío muestra si se está enviando, salió o falló, y lo que falló se reintenta.
 - Al escribir `@` aparece a quién mencionar, y la lista se achica mientras se escribe el nombre. Tocar a alguien completa la mención.
 - Mantener apretado un mensaje lo responde: la cita queda arriba del campo de texto hasta enviar o cancelar.
+- El micrófono simula una grabación, con su reloj y su onda. Al enviar sale una frase al azar que el agente entiende, y queda como un audio con su texto.
 - El mensaje que había quedado sin enviar aparece al final, listo para reintentar. Lo que no sale se guarda en el teléfono.
 - Arriba se ve quién está escribiendo y si el agente piensa o tarda.
 - Lo que dice una persona va en un globo. Lo que anota el agente va en una tarjeta a todo el ancho, sin globo.
@@ -111,7 +112,7 @@ Tres reglas sostienen el resto:
 - **Qué lluvia cuenta.** Se suma al mes una lluvia guardada, del mismo pluviómetro y con fecha posterior a `until`. Una lluvia incompleta no cuenta hasta que alguien la complete.
 - **La lista de animales muestra los activos,** para que coincida con el stock. Si una tarjeta lleva a un animal en particular, se muestra aunque ya no esté.
 - **La hora es `now` de los datos,** como pide la consigna. Con ella se decide qué es "Hoy" y qué es "Ayer".
-- **El micrófono es de mentira.** El servidor solo acepta texto.
+- **El micrófono es de mentira.** No graba: al enviar manda como texto una frase al azar, porque el servidor solo acepta texto. La app recuerda que fue un audio para dibujarlo así.
 
 ### Donde la guía no alcanzaba
 
@@ -145,11 +146,10 @@ No hay librería de gráficos ni kit de componentes: las barras de la lluvia y d
 
 ## Qué quedó afuera
 
-- **El micrófono.** El botón está, pero no hace nada.
 - **Un dato eliminado.** Se muestra como "Eliminado", pero el servidor no trae ningún ejemplo y no se pudo probar.
 - **Los extras opcionales:** el detalle de un animal, la info del grupo y la versión web.
 
 ## Cómo se probó
 
-- 80 tests sobre las funciones puras del dominio y de los mappers: el orden, los repetidos, el envío, los datos, la lluvia, las menciones y los formatos.
+- 86 tests sobre las funciones puras del dominio y de los mappers: el orden, los repetidos, el envío, los datos, la lluvia, las menciones, los audios y los formatos.
 - A mano en Expo Go, en emuladores con Android 16 y con Android 11.

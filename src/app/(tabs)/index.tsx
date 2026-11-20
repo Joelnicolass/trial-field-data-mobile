@@ -14,7 +14,7 @@ import { color } from '@/ui/theme';
 // El grupo del campo. Recibe del hook un modelo listo y lo dibuja.
 export default function GroupScreen() {
   const router = useRouter();
-  const { status, model, retry, newCount, atBottom, onScroll, onListReady, sendText, retrySend, completeDato, dismissNotice } = useGroupScreen();
+  const { status, model, retry, newCount, atBottom, onScroll, onListReady, sendText, sendVoice, retrySend, completeDato, dismissNotice } = useGroupScreen();
 
   // Tocar una tarjeta abre Campo en lo que esa tarjeta indica. El grupo
   // queda montado detrás: al volver está como se lo dejó.
@@ -40,6 +40,7 @@ export default function GroupScreen() {
           onListReady={onListReady}
           onOpen={openInCampo}
           onSend={sendText}
+          onSendVoice={sendVoice}
           onRetry={retrySend}
           onComplete={(dato, values) => completeDato(dato.datoId, dato.version, values)}
           onDismissNotice={dismissNotice}
