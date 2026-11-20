@@ -5,7 +5,8 @@ import { Icon } from '@/ui/Icon';
 import { TextField } from '@/ui/TextField';
 import { color, space, toqueMinimo } from '@/ui/theme';
 
-import { ReplyQuote, type Quote } from './ReplyQuote';
+import type { QuoteModel } from './model';
+import { ReplyQuote } from './ReplyQuote';
 
 type Props = {
   value: string;
@@ -16,7 +17,7 @@ type Props = {
   /** Suma una "@" para mencionar a alguien. */
   onMention: () => void;
   /** El mensaje al que se está respondiendo, si hay. */
-  replyingTo?: Quote;
+  replyingTo?: QuoteModel;
   onCancelReply?: () => void;
 };
 

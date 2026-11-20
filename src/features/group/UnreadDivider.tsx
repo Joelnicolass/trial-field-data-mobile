@@ -4,13 +4,12 @@ import { AppText } from '@/ui/AppText';
 import { estado, space } from '@/ui/theme';
 
 type Props = {
-  count: number;
+  /** Ya escrito: "7 mensajes sin leer". */
+  label: string;
 };
 
 // Marca dónde empieza lo que todavía no leí.
-export function UnreadDivider({ count }: Props) {
-  const label = count === 1 ? '1 mensaje sin leer' : `${count} mensajes sin leer`;
-
+export function UnreadDivider({ label }: Props) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[8] }}>
       <Line />

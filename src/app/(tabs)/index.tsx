@@ -3,18 +3,16 @@ import { useCallback } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { GroupChatView } from '@/features/group/GroupChatView';
-import { statusLine } from '@/features/group/statusLine';
-import { useGroupChat } from '@/features/group/useGroupChat';
+import { useGroupScreen } from '@/features/group/useGroupScreen';
 import { EmptyState } from '@/ui/EmptyState';
 import { IconButton } from '@/ui/IconButton';
 import { ScreenHeader } from '@/ui/ScreenHeader';
 import { color } from '@/ui/theme';
 
-// El grupo del campo. Lee del servidor: carga el historial y después muestra
-// lo que va llegando.
+// El grupo del campo. Recibe del hook un modelo listo y lo dibuja.
 export default function GroupScreen() {
   const router = useRouter();
-  const { status, chat, datos, timeline, membersById, messagesBySeq, retry } = useGroupChat();
+  const { status, model, retry, newCount, onScroll } = useGroupScreen();
 
   // Por ahora cualquier tarjeta lleva a Campo; abrir la sección exacta es el paso que sigue.
   const openInCampo = useCallback(() => router.navigate('/campo'), [router]);
@@ -22,13 +20,13 @@ export default function GroupScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: color.fondo }}>
       <ScreenHeader
-        title={chat?.name ?? 'Grupo'}
-        subtitle={chat ? statusLine(chat) : undefined}
+        title={model?.title ?? 'Grupo'}
+        subtitle={model?.statusLine}
         right={<IconButton icon="grid" accessibilityLabel="Ver los componentes" tint={color.sobreNavy} onPress={() => router.push('/catalogo')} />}
       />
 
-      {chat ? (
-        <GroupChatView chat={chat} timeline={timeline} datos={datos} membersById={membersById} messagesBySeq={messagesBySeq} onOpen={openInCampo} />
+      {model ? (
+        <GroupChatView model={model} newCount={newCount} onScroll={onScroll} onOpen={openInCampo} />
       ) : (
         <View style={{ flex: 1, justifyContent: 'center' }}>
           {status === 'error' ? (

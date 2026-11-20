@@ -1,24 +1,19 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { formatQuantity, formatValue } from '@/domain/format';
-import { useNow } from '@/hooks/useNow';
-import type { Dato, Field } from '@/server/mock-server';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Icon } from '@/ui/Icon';
 import { KeyValueRow } from '@/ui/KeyValueRow';
-import { Tag, type TagStatus } from '@/ui/Tag';
+import { Tag } from '@/ui/Tag';
 import { color, estado, space } from '@/ui/theme';
 
 import { MissingField } from './MissingField';
+import type { DatoModel } from './model';
 
 type Props = {
-  /** El dato como está ahora: si alguien lo corrigió, esta misma tarjeta cambia. */
-  dato: Dato;
-  /** Lo que dice el agente al anotarlo: "Anoté la lluvia." */
-  intro?: string | null;
+  dato: DatoModel;
   /** Lleva a ese dato en la vista Campo. */
   onOpen?: () => void;
   /** Completa lo que falta, sin escribir otro mensaje: campo → valor. */
@@ -27,62 +22,46 @@ type Props = {
   saving?: boolean;
 };
 
-const STATUS: Record<Dato['status'], { label: string; tag: TagStatus }> = {
-  saved: { label: 'Guardado', tag: 'activo' },
-  incomplete: { label: 'Falta un dato', tag: 'faltaDato' },
-  deleted: { label: 'Eliminado', tag: 'archivado' },
-};
-
-// Lo que anota el agente. No asume qué campos trae: muestra los que vengan,
-// cada uno según su tipo. Si falta algo, la tarjeta queda en naranja y deja
-// completarlo ahí mismo.
-export function DatoCard({ dato, intro, onOpen, onComplete, saving = false }: Props) {
-  const now = useNow();
+// Lo que anota el agente. Si alguien lo corrige, esta misma tarjeta cambia.
+// Si falta algo, queda en naranja y deja completarlo ahí mismo.
+export function DatoCard({ dato, onOpen, onComplete, saving = false }: Props) {
+  // Lo que se va eligiendo para los campos que faltan.
   const [answers, setAnswers] = useState<Record<string, string>>({});
-
-  const status = STATUS[dato.status];
-  const incomplete = dato.status === 'incomplete';
-  const headline = findHeadline(dato.fields);
-  const filled = dato.fields.filter((field) => field.value !== null && field !== headline);
-  const missing = dato.fields.filter((field) => field.value === null);
   const hasAnswers = Object.values(answers).some((answer) => answer.trim() !== '');
 
   return (
-    <Card style={incomplete ? { borderColor: estado.faltaDato.borde } : undefined}>
+    <Card style={dato.incomplete ? { borderColor: estado.faltaDato.borde } : undefined}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[8] }}>
         <AppText variant="h4" tone="tinta">
           {dato.title}
         </AppText>
-        <Tag label={status.label} status={status.tag} />
+        <Tag label={dato.status.label} status={dato.status.tag} />
       </View>
 
-      {intro ? <AppText>{intro}</AppText> : null}
+      {dato.intro ? <AppText>{dato.intro}</AppText> : null}
 
-      {headline ? (
+      {dato.headline ? (
         <AppText variant="h2" tone="tinta" tabular>
-          {formatQuantity(headline.value as number, headline.unit)}
+          {dato.headline}
         </AppText>
       ) : null}
 
       <View>
-        {filled.map((field) => (
-          <KeyValueRow key={field.key} label={field.label} value={formatValue(field.value, field.type, now, field.unit)} />
+        {dato.fields.map((field) => (
+          <KeyValueRow key={field.label} label={field.label} value={field.value} />
         ))}
       </View>
 
-      {incomplete
-        ? missing.map((field) => (
-            <MissingField
-              key={field.key}
-              field={field}
-              suggestions={dato.suggestions[field.key] ?? []}
-              value={answers[field.key] ?? ''}
-              onChange={(value) => setAnswers((current) => ({ ...current, [field.key]: value }))}
-            />
-          ))
-        : null}
+      {dato.missing.map((field) => (
+        <MissingField
+          key={field.key}
+          field={field}
+          value={answers[field.key] ?? ''}
+          onChange={(value) => setAnswers((current) => ({ ...current, [field.key]: value }))}
+        />
+      ))}
 
-      {incomplete && onComplete ? (
+      {dato.incomplete && onComplete ? (
         <Button label="Completar" disabled={!hasAnswers} loading={saving} onPress={() => onComplete(answers)} />
       ) : null}
 
@@ -101,10 +80,4 @@ export function DatoCard({ dato, intro, onOpen, onComplete, saving = false }: Pr
       ) : null}
     </Card>
   );
-}
-
-// Si el dato tiene un número con unidad (23 mm), ese es el titular y va grande.
-// Si no lo tiene, todos los campos van como filas.
-function findHeadline(fields: Field[]): Field | undefined {
-  return fields.find((field) => field.type === 'number' && typeof field.value === 'number' && field.unit !== undefined);
 }
