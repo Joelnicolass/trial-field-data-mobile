@@ -1,6 +1,7 @@
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useRef, useState } from 'react';
 import { View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 
 import { space } from '@/ui/theme';
 
@@ -16,28 +17,42 @@ type Props = {
   newCount: number;
   onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   onOpen: (target: OpenTarget) => void;
+  onSend: (text: string) => void;
+  onRetry: (localId: string) => void;
 };
 
 // La lista del grupo y el composer. Abre parada en lo primero sin leer y no
 // se mueve sola mientras se lee más arriba.
-export function GroupChatView({ model, newCount, onScroll, onOpen }: Props) {
+export function GroupChatView({ model, newCount, onScroll, onOpen, onSend, onRetry }: Props) {
   const listRef = useRef<FlashListRef<GroupRow>>(null);
   const [draft, setDraft] = useState('');
 
+  function send() {
+    const text = draft.trim();
+    if (text === '') return;
+
+    onSend(text);
+    setDraft('');
+    // Lo que acabo de mandar tiene que verse: la lista baja hasta el final.
+    requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+  }
+
   return (
-    <View style={{ flex: 1 }}>
+    // Cuando sale el teclado, la lista se achica y el composer queda arriba de él.
+    <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
       <View style={{ flex: 1 }}>
         <FlashList
           ref={listRef}
           data={model.rows}
           keyExtractor={(row) => row.key}
           getItemType={(row) => row.kind}
-          renderItem={({ item }) => <GroupRowView row={item} onOpen={onOpen} />}
+          renderItem={({ item }) => <GroupRowView row={item} onOpen={onOpen} onRetry={onRetry} />}
           initialScrollIndex={model.initialIndex}
           // Si está cerca del final, sigue a lo que llega. Si no, no se mueve.
           maintainVisibleContentPosition={{ autoscrollToBottomThreshold: 0.2 }}
           onScroll={onScroll}
           scrollEventThrottle={64}
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingTop: space[16] }}
           ListFooterComponent={
             <View style={{ paddingHorizontal: space[16], paddingBottom: space[12], gap: space[8] }}>
@@ -55,8 +70,7 @@ export function GroupChatView({ model, newCount, onScroll, onOpen }: Props) {
         ) : null}
       </View>
 
-      {/* Todavía no envía: escribir y mandar llega en el próximo paso. */}
-      <Composer value={draft} onChangeText={setDraft} onSend={() => setDraft('')} onMic={() => {}} onMention={() => setDraft((text) => `${text}@`)} />
-    </View>
+      <Composer value={draft} onChangeText={setDraft} onSend={send} onMic={() => {}} onMention={() => setDraft((text) => `${text}@`)} />
+    </KeyboardAvoidingView>
   );
 }

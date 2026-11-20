@@ -1,6 +1,6 @@
 import type { ChatSnapshot, Dato, Message } from '@/server/mock-server';
 
-import { applyEvent, chatFromSnapshot, currentDatos, dropExpiredTyping, insertMessage, typingMembers, TYPING_MS } from './chat';
+import { applyEvent, chatFromSnapshot, currentDatos, dropExpiredTyping, failOutgoing, insertMessage, queueOutgoing, receiveMessage, typingMembers, TYPING_MS } from './chat';
 
 function message(seq: number, overrides: Partial<Message> = {}): Message {
   return {
@@ -139,5 +139,48 @@ describe('currentDatos', () => {
     const datos = currentDatos([datoMessage, correction, repeated]);
 
     expect(datos.d_02.version).toBe(2);
+  });
+});
+
+describe('lo que mando yo', () => {
+  const chat = chatFromSnapshot(snapshot);
+  const outgoing = { localId: 'l_1', text: 'hola', replyTo: null, createdAt: '2026-11-18T07:10:00-03:00' };
+  const confirmation = message(115, { sender_id: 'u_01', local_id: 'l_1', text: 'hola' });
+
+  it('aparece al instante como "enviándose"', () => {
+    expect(queueOutgoing(chat, outgoing).outbox).toEqual([{ ...outgoing, status: 'sending' }]);
+  });
+
+  it('si falla, queda en la lista para reintentar', () => {
+    const failed = failOutgoing(queueOutgoing(chat, outgoing), 'l_1');
+    expect(failed.outbox[0].status).toBe('failed');
+  });
+
+  it('reintentar lo vuelve a "enviándose" sin duplicarlo', () => {
+    const retried = queueOutgoing(failOutgoing(queueOutgoing(chat, outgoing), 'l_1'), outgoing);
+    expect(retried.outbox).toEqual([{ ...outgoing, status: 'sending' }]);
+  });
+
+  it('la confirmación saca al pendiente, llegue una vez o dos', () => {
+    const sending = queueOutgoing(chat, outgoing);
+    // Llega primero como respuesta al envío y después como evento.
+    const byPromise = receiveMessage(sending, confirmation);
+    const byEvent = applyEvent(byPromise, { type: 'message', cursor: 3, message: confirmation }, 0);
+
+    expect(byEvent.outbox).toEqual([]);
+    expect(byEvent.messages.filter((m) => m.message_id === 'm_115')).toHaveLength(1);
+  });
+
+  it('lo que quedó sin enviar de antes arranca como fallido', () => {
+    const withUnsent = chatFromSnapshot(
+      { ...snapshot, unsent: [{ local_id: 'l_viejo', sender_id: 'u_01', type: 'text', text: 'pendiente', mentions: [], created_at: '2026-11-18T07:02:06-03:00' }] },
+      [{ ...outgoing, status: 'sending' }, { ...outgoing, localId: 'l_viejo', status: 'sending' }],
+    );
+
+    // El que viene del servidor y el guardado en la app, sin repetir el que está en los dos.
+    expect(withUnsent.outbox.map((item) => [item.localId, item.status])).toEqual([
+      ['l_viejo', 'failed'],
+      ['l_1', 'failed'],
+    ]);
   });
 });

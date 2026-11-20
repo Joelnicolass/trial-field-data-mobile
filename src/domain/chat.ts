@@ -11,6 +11,17 @@ import type { AgentStatus, ChatSnapshot, Dato, DatoChange, Member, MemberId, Mes
 /** Cuánto dura un "escribiendo" si esa persona no manda nada. El servidor no avisa cuando termina. */
 export const TYPING_MS = 6000;
 
+/** Un mensaje mío que todavía no salió: se está enviando o falló. */
+export type Outgoing = {
+  /** Identificador que genera la app. Reintentar con el mismo no duplica el mensaje. */
+  localId: string;
+  text: string;
+  /** El `seq` del mensaje al que responde, si responde a alguno. */
+  replyTo: number | null;
+  createdAt: string;
+  status: 'sending' | 'failed';
+};
+
 export type ChatState = {
   name: string;
   /** Quién soy yo dentro de `members`. */
@@ -18,6 +29,8 @@ export type ChatState = {
   members: Member[];
   /** Ordenados por `seq` y sin repetidos. */
   messages: Message[];
+  /** Lo mío que todavía no salió, en el orden en que lo escribí. */
+  outbox: Outgoing[];
   /** Hasta qué mensaje había leído al abrir: debajo va "mensajes sin leer". */
   lastReadSeq: number;
   /** El último mensaje que había al abrir. Lo que llega después es "nuevo", no "sin leer". */
@@ -29,8 +42,12 @@ export type ChatState = {
   cursor: number;
 };
 
-/** Arma el estado inicial con lo que devuelve `loadChat()`. */
-export function chatFromSnapshot(snapshot: ChatSnapshot): ChatState {
+/**
+ * Arma el estado inicial con lo que devuelve `loadChat()`.
+ *
+ * @param stored Lo que la app tenía guardado sin enviar de una vez anterior.
+ */
+export function chatFromSnapshot(snapshot: ChatSnapshot, stored: Outgoing[] = []): ChatState {
   const me = snapshot.members.find((member) => member.id === snapshot.me);
   const messages = snapshot.messages.reduce(insertMessage, []);
   return {
@@ -38,6 +55,7 @@ export function chatFromSnapshot(snapshot: ChatSnapshot): ChatState {
     me: snapshot.me,
     members: snapshot.members,
     messages,
+    outbox: initialOutbox(snapshot, stored),
     lastReadSeq: me?.watermark ?? 0,
     loadedUpToSeq: messages[messages.length - 1]?.seq ?? 0,
     typingUntil: {},
@@ -50,18 +68,60 @@ export function chatFromSnapshot(snapshot: ChatSnapshot): ChatState {
 export function applyEvent(state: ChatState, event: ServerEvent, now: number): ChatState {
   switch (event.type) {
     case 'message':
-      return {
-        ...state,
-        messages: insertMessage(state.messages, event.message),
-        // Si mandó algo, dejó de escribir.
-        typingUntil: omit(state.typingUntil, event.message.sender_id),
-        cursor: Math.max(state.cursor, event.cursor),
-      };
+      return { ...receiveMessage(state, event.message), cursor: Math.max(state.cursor, event.cursor) };
     case 'typing':
       return { ...state, typingUntil: { ...state.typingUntil, [event.member_id]: now + TYPING_MS } };
     case 'agent_status':
       return { ...state, agentStatus: event.status };
   }
+}
+
+/**
+ * Suma un mensaje al grupo. Si es la confirmación de algo que mandé yo
+ * (trae mi `local_id`), saca ese pendiente de la lista.
+ *
+ * Lo mío llega por dos caminos: como respuesta al enviar y como evento. Esta
+ * función se llama en los dos, y la segunda vez no cambia nada.
+ */
+export function receiveMessage(state: ChatState, message: Message): ChatState {
+  return {
+    ...state,
+    messages: insertMessage(state.messages, message),
+    outbox: message.local_id ? state.outbox.filter((item) => item.localId !== message.local_id) : state.outbox,
+    // Si mandó algo, dejó de escribir.
+    typingUntil: omit(state.typingUntil, message.sender_id),
+  };
+}
+
+/** Pone un mensaje mío como "enviándose". Sirve para el primer intento y para reintentar. */
+export function queueOutgoing(state: ChatState, outgoing: Omit<Outgoing, 'status'>): ChatState {
+  const sending: Outgoing = { ...outgoing, status: 'sending' };
+  const exists = state.outbox.some((item) => item.localId === outgoing.localId);
+  return {
+    ...state,
+    outbox: exists ? state.outbox.map((item) => (item.localId === outgoing.localId ? sending : item)) : [...state.outbox, sending],
+  };
+}
+
+/** Marca como fallido un envío. Queda en la lista para reintentarlo. */
+export function failOutgoing(state: ChatState, localId: string): ChatState {
+  return { ...state, outbox: state.outbox.map((item) => (item.localId === localId ? { ...item, status: 'failed' } : item)) };
+}
+
+// Lo pendiente al abrir: lo que el servidor dice que no salió la vez
+// anterior, más lo que la app tenía guardado. Nada de eso se está enviando
+// ahora, así que todo arranca como fallido.
+function initialOutbox(snapshot: ChatSnapshot, stored: Outgoing[]): Outgoing[] {
+  const fromServer: Outgoing[] = snapshot.unsent.map((unsent) => ({
+    localId: unsent.local_id,
+    text: unsent.text,
+    replyTo: null,
+    createdAt: unsent.created_at,
+    status: 'failed',
+  }));
+  const known = new Set(fromServer.map((item) => item.localId));
+  const fromApp = stored.filter((item) => !known.has(item.localId)).map((item): Outgoing => ({ ...item, status: 'failed' }));
+  return [...fromServer, ...fromApp];
 }
 
 /** Apaga los "escribiendo" que ya vencieron. Si no venció ninguno, devuelve el mismo estado. */

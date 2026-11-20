@@ -6,7 +6,7 @@
 // sus textos ya escritos. Acá se decide y se formatea todo; los componentes
 // solo ponen cada texto en su lugar.
 
-import type { ChatState } from '@/domain/chat';
+import type { ChatState, Outgoing } from '@/domain/chat';
 import { formatDate, formatDuration, formatNumber, formatQuantity, formatTime, formatValue } from '@/domain/format';
 import type { Card, Dato, Field, Member, Message, Table } from '@/server/mock-server';
 
@@ -36,7 +36,11 @@ export function toGroupScreen(chat: ChatState, datos: Record<string, Dato>, now:
   };
 
   const timeline = buildTimeline(chat.messages, chat);
-  const rows = timeline.flatMap((item, index) => toRow(item, timeline[index - 1], context) ?? []);
+  const rows = [
+    ...timeline.flatMap((item, index) => toRow(item, timeline[index - 1], context) ?? []),
+    // Lo que todavía no salió va al final, en el orden en que lo escribí.
+    ...chat.outbox.map((outgoing) => toOutgoingRow(outgoing, context)),
+  ];
   const unreadIndex = rows.findIndex((row) => row.kind === 'unread');
 
   return {
@@ -84,7 +88,25 @@ function toRow(item: TimelineItem, previous: TimelineItem | undefined, context: 
     time: formatTime(message.created_at),
     quote: toQuote(message, context),
     body: toPersonBody(message),
-    delivery: null,
+    delivery: isMine ? 'sent' : null,
+    localId: null,
+  };
+}
+
+/** Un mensaje mío que se está enviando o falló: se ve como cualquiera de los míos, con su estado. */
+function toOutgoingRow(outgoing: Outgoing, context: Context): GroupRow {
+  const quoted = outgoing.replyTo === null ? undefined : context.messagesBySeq.get(outgoing.replyTo);
+  return {
+    kind: 'person',
+    key: `local-${outgoing.localId}`,
+    author: null,
+    isMine: true,
+    mentionsMe: false,
+    time: formatTime(outgoing.createdAt),
+    quote: quoted ? toQuoteOf(quoted, context) : null,
+    body: { kind: 'text', text: outgoing.text },
+    delivery: outgoing.status,
+    localId: outgoing.localId,
   };
 }
 
@@ -107,8 +129,10 @@ function toPersonBody(message: Message): PersonBody {
 function toQuote(message: Message, context: Context): QuoteModel | null {
   if (message.reply_to === null) return null;
   const quoted = context.messagesBySeq.get(message.reply_to);
-  if (!quoted) return null;
+  return quoted ? toQuoteOf(quoted, context) : null;
+}
 
+function toQuoteOf(quoted: Message, context: Context): QuoteModel {
   const author = context.membersById.get(quoted.sender_id);
   return { author: author?.is_agent ? 'Agente' : (author?.short_name ?? ''), snippet: messageSnippet(quoted) };
 }
