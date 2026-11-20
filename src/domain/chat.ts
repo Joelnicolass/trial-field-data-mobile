@@ -22,6 +22,19 @@ export type Outgoing = {
   status: 'sending' | 'failed';
 };
 
+/** Un intento de completar un dato desde su tarjeta: se está guardando o falló. */
+export type DatoSave = {
+  /** Identificador del pedido. Reintentar con el mismo no lo aplica dos veces. */
+  localId: string;
+  /** Lo que se eligió para cada campo que faltaba: campo → valor. */
+  values: Record<string, string>;
+  status: 'saving' | 'failed';
+  /** Por qué falló, con el código que devuelve el servidor. */
+  errorCode: string | null;
+  /** El campo cuyo valor no sirvió, si el error fue ese. */
+  errorField: string | null;
+};
+
 export type ChatState = {
   name: string;
   /** Quién soy yo dentro de `members`. */
@@ -31,6 +44,8 @@ export type ChatState = {
   messages: Message[];
   /** Lo mío que todavía no salió, en el orden en que lo escribí. */
   outbox: Outgoing[];
+  /** Los datos que estoy completando ahora: id del dato → su intento. */
+  datoSaves: Record<string, DatoSave>;
   /** Hasta qué mensaje había leído al abrir: debajo va "mensajes sin leer". */
   lastReadSeq: number;
   /** El último mensaje que había al abrir. Lo que llega después es "nuevo", no "sin leer". */
@@ -56,6 +71,7 @@ export function chatFromSnapshot(snapshot: ChatSnapshot, stored: Outgoing[] = []
     members: snapshot.members,
     messages,
     outbox: initialOutbox(snapshot, stored),
+    datoSaves: {},
     lastReadSeq: me?.watermark ?? 0,
     loadedUpToSeq: messages[messages.length - 1]?.seq ?? 0,
     typingUntil: {},
@@ -155,6 +171,23 @@ export function typingMembers(state: ChatState): Member[] {
 }
 
 // ── Datos ──────────────────────────────────────────────────────────────────
+
+/** Marca un dato como "guardando" con lo que se eligió. Sirve también para reintentar. */
+export function startDatoSave(state: ChatState, datoId: string, save: Pick<DatoSave, 'localId' | 'values'>): ChatState {
+  return { ...state, datoSaves: { ...state.datoSaves, [datoId]: { ...save, status: 'saving', errorCode: null, errorField: null } } };
+}
+
+/** El guardado falló: lo elegido no se pierde y se puede reintentar. */
+export function failDatoSave(state: ChatState, datoId: string, errorCode: string, errorField: string | null = null): ChatState {
+  const save = state.datoSaves[datoId];
+  if (!save) return state;
+  return { ...state, datoSaves: { ...state.datoSaves, [datoId]: { ...save, status: 'failed', errorCode, errorField } } };
+}
+
+/** Terminó el intento, haya salido bien o ya no haga falta. */
+export function endDatoSave(state: ChatState, datoId: string): ChatState {
+  return { ...state, datoSaves: omit(state.datoSaves, datoId) };
+}
 
 /**
  * Cómo está ahora cada dato del grupo.

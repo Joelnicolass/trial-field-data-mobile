@@ -13,15 +13,18 @@ import {
   chatFromSnapshot,
   currentDatos,
   dropExpiredTyping,
+  endDatoSave,
+  failDatoSave,
   failOutgoing,
   queueOutgoing,
   receiveMessage,
+  startDatoSave,
   TYPING_MS,
   type ChatState,
   type Outgoing,
 } from '@/domain/chat';
 import data from '@/server/mock-data.json';
-import { connect, loadChat, markRead, send, type Dato, type ServerEvent } from '@/server/mock-server';
+import { completeDato, connect, loadChat, markRead, send, ServerError, type Dato, type ServerEvent } from '@/server/mock-server';
 
 type Status = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -37,7 +40,19 @@ type ChatStore = {
   sendText: (text: string, replyTo?: number | null) => void;
   /** Vuelve a mandar algo que falló, con su mismo identificador. */
   retry: (localId: string) => void;
+  /**
+   * Completa lo que le falta a un dato. `version` es la que se estaba viendo:
+   * si otro lo cambió antes, el servidor lo rechaza.
+   */
+  completeDato: (datoId: string, version: number, values: Record<string, string>) => Promise<void>;
+  /** El código de algo que hay que avisar abajo. `null` si no hay nada. */
+  noticeCode: string | null;
+  dismissNotice: () => void;
 };
+
+// Errores en los que el dato ya está como tiene que estar: no hay nada que
+// reintentar, solo avisar.
+const NOTHING_TO_RETRY = ['stale_version', 'no_changes', 'not_found'];
 
 /** Dónde se guarda en el teléfono lo que no salió. */
 const OUTBOX_KEY = 'grupo:sin-enviar';
@@ -80,6 +95,36 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const pending = get().chat?.outbox.find((item) => item.localId === localId);
     if (pending) deliver(pending);
   },
+
+  noticeCode: null,
+  dismissNotice: () => set({ noticeCode: null }),
+
+  completeDato: async (datoId, version, values) => {
+    const filled = withoutEmpty(values);
+    if (Object.keys(filled).length === 0) return;
+
+    // Reintentar lo mismo usa el mismo identificador: así no se aplica dos veces.
+    const previous = get().chat?.datoSaves[datoId];
+    const localId = previous && sameValues(previous.values, filled) ? previous.localId : Crypto.randomUUID();
+
+    updateChat((chat) => startDatoSave(chat, datoId, { localId, values: filled }));
+    try {
+      const change = await completeDato({ local_id: localId, dato_id: datoId, values: filled, base_version: version });
+      // El cambio también llega como evento: `receiveMessage` acepta los dos.
+      updateChat((chat) => endDatoSave(receiveMessage(chat, change), datoId));
+    } catch (error) {
+      const code = error instanceof ServerError ? error.code : 'no_connection';
+      if (NOTHING_TO_RETRY.includes(code)) {
+        // Otro lo completó antes, o no había nada que cambiar: la tarjeta ya
+        // muestra cómo quedó, porque ese cambio llegó como cualquier evento.
+        updateChat((chat) => endDatoSave(chat, datoId));
+        set({ noticeCode: code });
+      } else {
+        const field = error instanceof ServerError ? (error.field ?? null) : null;
+        updateChat((chat) => failDatoSave(chat, datoId, code, field));
+      }
+    }
+  },
 }));
 
 // Lo que no salió se guarda en el teléfono cada vez que cambia, para
@@ -114,6 +159,19 @@ function handleEvent(event: ServerEvent) {
 
 function updateChat(change: (chat: ChatState) => ChatState) {
   useChatStore.setState((state) => (state.chat ? { chat: change(state.chat) } : state));
+}
+
+function withoutEmpty(values: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(values)
+      .map(([key, value]) => [key, value.trim()])
+      .filter(([, value]) => value !== ''),
+  );
+}
+
+function sameValues(a: Record<string, string>, b: Record<string, string>): boolean {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
 }
 
 async function readStoredOutbox(): Promise<Outgoing[]> {

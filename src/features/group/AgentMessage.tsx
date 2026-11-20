@@ -14,7 +14,7 @@ type Props = {
   row: Extract<GroupRow, { kind: 'agent' }>;
   /** Abre en Campo lo que indica la tarjeta. */
   onOpen: (target: OpenTarget) => void;
-  onComplete?: (dato: DatoModel, values: Record<string, string>) => void;
+  onComplete: (dato: DatoModel, values: Record<string, string>) => void;
 };
 
 // Lo que manda el agente. No es una persona y se tiene que notar de un
@@ -47,7 +47,7 @@ function Content({ content, onOpen, onComplete }: { content: AgentContent } & Pi
       <DatoCard
         dato={dato}
         onOpen={opens ? () => onOpen(opens) : undefined}
-        onComplete={onComplete ? (values) => onComplete(dato, values) : undefined}
+        onComplete={(values) => onComplete(dato, values)}
       />
     );
   }

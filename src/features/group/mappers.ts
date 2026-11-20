@@ -6,7 +6,7 @@
 // sus textos ya escritos. Acá se decide y se formatea todo; los componentes
 // solo ponen cada texto en su lugar.
 
-import type { ChatState, Outgoing } from '@/domain/chat';
+import type { ChatState, DatoSave, Outgoing } from '@/domain/chat';
 import { formatDate, formatDuration, formatNumber, formatQuantity, formatTime, formatValue } from '@/domain/format';
 import type { Card, Dato, Field, Member, Message, Table } from '@/server/mock-server';
 
@@ -25,8 +25,12 @@ type Context = {
   messagesBySeq: Map<number, Message>;
 };
 
-/** Toda la pantalla del grupo, lista para dibujar. */
-export function toGroupScreen(chat: ChatState, datos: Record<string, Dato>, now: string): GroupScreenModel {
+/**
+ * Toda la pantalla del grupo, lista para dibujar.
+ *
+ * @param noticeCode El código de algo que hay que avisar abajo, si hay.
+ */
+export function toGroupScreen(chat: ChatState, datos: Record<string, Dato>, now: string, noticeCode: string | null = null): GroupScreenModel {
   const context: Context = {
     chat,
     now,
@@ -49,8 +53,16 @@ export function toGroupScreen(chat: ChatState, datos: Record<string, Dato>, now:
     rows,
     initialIndex: unreadIndex >= 0 ? unreadIndex : rows.length - 1,
     activity: toActivity(chat),
+    notice: noticeCode ? (NOTICE[noticeCode] ?? null) : null,
   };
 }
+
+// Lo que se avisa abajo cuando completar un dato no hizo falta o no se pudo.
+const NOTICE: Record<string, string> = {
+  stale_version: 'Alguien lo completó antes que vos. La tarjeta muestra cómo quedó.',
+  no_changes: 'Ya tenía ese valor. No hubo nada que guardar.',
+  not_found: 'Ese dato ya no está en el grupo.',
+};
 
 function toActivity(chat: ChatState): ActivityModel[] {
   const typing = typingActivity(chat);
@@ -143,7 +155,7 @@ function toAgentContent(message: Message, context: Context): AgentContent {
   if (message.type === 'dato' && message.dato) {
     // La tarjeta muestra el dato como está ahora, no como era en este mensaje.
     const current = context.datos[message.dato.id] ?? message.dato;
-    return { kind: 'dato', dato: toDatoModel(current, message, context.now) };
+    return { kind: 'dato', dato: toDatoModel(current, message, context.now, context.chat.datoSaves[current.id]) };
   }
   if (message.type === 'card' && message.card) return { kind: 'metric', metric: toMetricModel(message.card, context.now) };
   if (message.type === 'table' && message.table) return { kind: 'table', table: toTableModel(message.table, context.now) };
@@ -160,7 +172,7 @@ const DATO_STATUS: Record<Dato['status'], DatoModel['status']> = {
  * Un dato, listo para su tarjeta. No asume qué campos trae: los que tienen
  * valor van como filas, cada uno según su tipo, y los que faltan se piden.
  */
-export function toDatoModel(dato: Dato, message: Message, now: string): DatoModel {
+export function toDatoModel(dato: Dato, message: Message, now: string, save?: DatoSave): DatoModel {
   const incomplete = dato.status === 'incomplete';
   const headline = findHeadline(dato.fields);
   // Lo que dijo el agente ("Me falta qué vacuna usaste.") deja de valer si
@@ -187,8 +199,12 @@ export function toDatoModel(dato: Dato, message: Message, now: string): DatoMode
             suggestions: dato.suggestions[field.key] ?? [],
             numeric: field.type === 'number',
             placeholder: field.unit ? `${field.label} (${field.unit})` : field.label,
+            error: save?.errorCode === 'invalid_value' && save.errorField === field.key ? 'Ese valor no sirve. Revisalo y probá de nuevo.' : null,
           }))
       : [],
+    saving: save?.status === 'saving',
+    // Un valor rechazado se marca en su campo; cualquier otra falla va acá.
+    error: save?.status === 'failed' && save.errorCode !== 'invalid_value' ? 'No se pudo guardar. Revisá tu conexión y probá de nuevo.' : null,
     opens: dato.opens,
   };
 }

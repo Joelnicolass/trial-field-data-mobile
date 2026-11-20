@@ -12,7 +12,7 @@ import { color } from '@/ui/theme';
 // El grupo del campo. Recibe del hook un modelo listo y lo dibuja.
 export default function GroupScreen() {
   const router = useRouter();
-  const { status, model, retry, newCount, onScroll, sendText, retrySend } = useGroupScreen();
+  const { status, model, retry, newCount, onScroll, sendText, retrySend, completeDato, dismissNotice } = useGroupScreen();
 
   // Por ahora cualquier tarjeta lleva a Campo; abrir la sección exacta es el paso que sigue.
   const openInCampo = useCallback(() => router.navigate('/campo'), [router]);
@@ -26,7 +26,16 @@ export default function GroupScreen() {
       />
 
       {model ? (
-        <GroupChatView model={model} newCount={newCount} onScroll={onScroll} onOpen={openInCampo} onSend={sendText} onRetry={retrySend} />
+        <GroupChatView
+          model={model}
+          newCount={newCount}
+          onScroll={onScroll}
+          onOpen={openInCampo}
+          onSend={sendText}
+          onRetry={retrySend}
+          onComplete={(dato, values) => completeDato(dato.datoId, dato.version, values)}
+          onDismissNotice={dismissNotice}
+        />
       ) : (
         <View style={{ flex: 1, justifyContent: 'center' }}>
           {status === 'error' ? (
